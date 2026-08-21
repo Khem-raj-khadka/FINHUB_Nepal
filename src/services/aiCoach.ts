@@ -90,37 +90,42 @@ CRITICAL RULES:
 USER FINANCIAL SNAPSHOT:
 ${JSON.stringify(financialContext, null, 2)}`;
 
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+      const endpoint = `https://api.mistral.ai/v1/chat/completions`;
 
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
         body: JSON.stringify({
-          contents: [
+          model: 'mistral-small-2603',
+          temperature: 0.9,
+          messages: [
+            {
+              role: 'system',
+              content: systemInstruction
+            },
             {
               role: 'user',
-              parts: [{ text: `${systemInstruction}\n\nUSER QUESTION: ${prompt}` }],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 400,
-          },
+              content: `USER QUESTION: ${prompt}`
+            }
+          ]
         }),
       });
 
       if (response.ok) {
         const json = await response.json();
-        const candidateText = json.candidates?.[0]?.content?.parts?.[0]?.text;
+        const candidateText = json.choices?.[0]?.message?.content;
         if (candidateText && candidateText.trim().length > 0) {
           return sanitizeMarkdownText(candidateText.trim());
         }
       } else {
         const errorData = await response.text();
-        console.error('Gemini API HTTP Error:', response.status, errorData);
+        console.error('Mistral API HTTP Error:', response.status, errorData);
       }
     } catch (apiError) {
-      console.warn('Gemini API call failed, falling back to local engine:', apiError);
+      console.warn('Mistral API call failed, falling back to local engine:', apiError);
     }
   }
 

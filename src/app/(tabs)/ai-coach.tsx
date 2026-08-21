@@ -326,6 +326,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: Spacing.two * 1.2,
     paddingHorizontal: Spacing.three,
+    flexShrink: 1,
   },
   bubbleLeft: {
     borderWidth: 1,
