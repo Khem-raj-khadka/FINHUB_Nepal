@@ -19,6 +19,7 @@ import { Spacing } from '../../constants/theme';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
+import FeedbackModal, { FeedbackType } from '../../components/ui/FeedbackModal';
 import { InvestmentCategory } from '../../types';
 
 // Zod schema validation
@@ -35,11 +36,24 @@ type InvestmentFormData = z.infer<typeof investmentSchema>;
 
 export default function AddInvestment() {
   const router = useRouter();
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
 
   // Zustand
   const { addInvestment } = useFinanceStore();
   const [loading, setLoading] = useState(false);
+
+  // Feedback Modal
+  const [feedbackState, setFeedbackState] = useState<{
+    visible: boolean;
+    type: FeedbackType;
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
 
   const {
     control,
@@ -74,15 +88,35 @@ export default function AddInvestment() {
           data.category === 'Stock' ? data.quantity : undefined
         );
         setLoading(false);
-        router.replace('/(tabs)/investments');
-      }, 600);
+        setFeedbackState({
+          visible: true,
+          type: 'success',
+          title: 'Investment Tracker Saved',
+          message: `Successfully added ${data.name} to your ${data.category} portfolio.`,
+        });
+      }, 500);
     } catch (err) {
       setLoading(false);
     }
   };
 
+  const handleFeedbackClose = () => {
+    setFeedbackState((s) => ({ ...s, visible: false }));
+    router.replace('/(tabs)/investments');
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      
+      {/* Feedback Modal */}
+      <FeedbackModal
+        visible={feedbackState.visible}
+        type={feedbackState.type}
+        title={feedbackState.title}
+        message={feedbackState.message}
+        onClose={handleFeedbackClose}
+      />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}>
@@ -130,13 +164,13 @@ export default function AddInvestment() {
                     style={[
                       styles.input,
                       {
-                        color: colors.inputText,
-                        borderColor: errors.name ? colors.danger : colors.inputBorder,
-                        backgroundColor: colors.inputBackground,
+                        color: isDark ? '#F8FAFC' : '#0F172A',
+                        borderColor: errors.name ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                       },
                     ]}
                     placeholder={selectedCategory === 'Stock' ? 'e.g. NABIL or NMB' : 'e.g. Nabil Flexi Cap Fund'}
-                    placeholderTextColor={colors.inputPlaceholder}
+                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
@@ -161,13 +195,13 @@ export default function AddInvestment() {
                       style={[
                         styles.input,
                         {
-                          color: colors.inputText,
-                          borderColor: errors.quantity ? colors.danger : colors.inputBorder,
-                          backgroundColor: colors.inputBackground,
+                          color: isDark ? '#F8FAFC' : '#0F172A',
+                          borderColor: errors.quantity ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
+                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                         },
                       ]}
                       placeholder="e.g. 50"
-                      placeholderTextColor={colors.inputPlaceholder}
+                      placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                       keyboardType="numeric"
                       onBlur={onBlur}
                       onChangeText={(text) => onChange(Number(text) || 0)}
@@ -196,13 +230,13 @@ export default function AddInvestment() {
                     style={[
                       styles.input,
                       {
-                        color: colors.inputText,
-                        borderColor: errors.purchaseValue ? colors.danger : colors.inputBorder,
-                        backgroundColor: colors.inputBackground,
+                        color: isDark ? '#F8FAFC' : '#0F172A',
+                        borderColor: errors.purchaseValue ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                       },
                     ]}
                     placeholder="e.g. 25000"
-                    placeholderTextColor={colors.inputPlaceholder}
+                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                     keyboardType="numeric"
                     onBlur={onBlur}
                     onChangeText={(text) => onChange(Number(text) || 0)}
@@ -228,13 +262,13 @@ export default function AddInvestment() {
                     style={[
                       styles.input,
                       {
-                        color: colors.inputText,
-                        borderColor: errors.currentValue ? colors.danger : colors.inputBorder,
-                        backgroundColor: colors.inputBackground,
+                        color: isDark ? '#F8FAFC' : '#0F172A',
+                        borderColor: errors.currentValue ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                       },
                     ]}
                     placeholder="e.g. 28500"
-                    placeholderTextColor={colors.inputPlaceholder}
+                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                     keyboardType="numeric"
                     onBlur={onBlur}
                     onChangeText={(text) => onChange(Number(text) || 0)}
@@ -261,13 +295,13 @@ export default function AddInvestment() {
                       style={[
                         styles.input,
                         {
-                          color: colors.inputText,
-                          borderColor: errors.monthlyContribution ? colors.danger : colors.inputBorder,
-                          backgroundColor: colors.inputBackground,
+                          color: isDark ? '#F8FAFC' : '#0F172A',
+                          borderColor: errors.monthlyContribution ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
+                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                         },
                       ]}
                       placeholder="e.g. 5000"
-                      placeholderTextColor={colors.inputPlaceholder}
+                      placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                       keyboardType="numeric"
                       onBlur={onBlur}
                       onChangeText={(text) => onChange(Number(text) || 0)}
@@ -321,7 +355,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.four,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '700',
     marginBottom: Spacing.two,
   },
@@ -345,10 +379,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: Spacing.two * 1.5,
     paddingHorizontal: Spacing.three,
-    fontSize: 15,
+    fontSize: 14.5,
   },
   errorText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '500',
     marginTop: Spacing.one,
   },

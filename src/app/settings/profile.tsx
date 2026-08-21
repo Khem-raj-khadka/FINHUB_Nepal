@@ -142,7 +142,7 @@ export default function ProfileSettings() {
         {/* User Card */}
         <Card style={[styles.userCard, { backgroundColor: colors.backgroundElement, borderColor: colors.border }]}>
           <View style={[styles.avatarCircle, { backgroundColor: colors.card }]}>
-            <Text style={styles.avatarEmoji}>👤</Text>
+            <User color={colors.accent} size={28} />
           </View>
           <Text style={[styles.userName, { color: colors.text }]}>{user?.name || 'Khem Raj'}</Text>
           <Text style={[styles.userEmail, { color: colors.textSecondary }]}>

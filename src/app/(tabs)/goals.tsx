@@ -6,20 +6,20 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  Alert,
   TextInput,
   Modal,
   RefreshControl,
   useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Plus, Trash2, Edit3, AlertCircle, CheckCircle2 } from 'lucide-react-native';
+import { Plus, Trash2, Edit3, AlertCircle, CheckCircle2, Shield, Laptop, Car, Home as HomeIcon, Compass, GraduationCap, Target } from 'lucide-react-native';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { Spacing } from '../../constants/theme';
 import Typography from '../../constants/Typography';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import ProgressBar from '../../components/ui/ProgressBar';
+import FeedbackModal, { FeedbackType } from '../../components/ui/FeedbackModal';
 import { calculateGoalProgress, calculateSmartSavings } from '../../services/calculations';
 import { SavingsGoal } from '../../types';
 import { useAppTheme } from '../../hooks/useAppTheme';
@@ -27,7 +27,7 @@ import { useTranslation } from '../../i18n';
 
 export default function Goals() {
   const router = useRouter();
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
   const { t } = useTranslation();
   const { width: windowWidth } = useWindowDimensions();
   const isWideScreen = windowWidth >= 768;
@@ -65,10 +65,21 @@ export default function Goals() {
   const [editDescription, setEditDescription] = useState('');
   const [editError, setEditError] = useState<string | null>(null);
 
-  // Delete Goal Confirmation Modal State
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  // Delete Goal Confirmation State
   const [deletingGoal, setDeletingGoal] = useState<SavingsGoal | null>(null);
-  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+
+  // Feedback Popup Modal
+  const [feedbackState, setFeedbackState] = useState<{
+    visible: boolean;
+    type: FeedbackType;
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
 
   const fmt = (val: number) => {
     if (isBalanceHidden) return '••••••';
@@ -78,19 +89,19 @@ export default function Goals() {
   const getGoalIcon = (iconName: string) => {
     switch (iconName?.toLowerCase()) {
       case 'shield':
-        return '🛡️';
+        return <Shield color={colors.accent} size={22} />;
       case 'laptop':
-        return '💻';
+        return <Laptop color={colors.info} size={22} />;
       case 'compass':
-        return '🧭';
+        return <Compass color={colors.accent} size={22} />;
       case 'car':
-        return '🏍️';
+        return <Car color={colors.warning} size={22} />;
       case 'home':
-        return '🏠';
+        return <HomeIcon color={colors.success} size={22} />;
       case 'graduation':
-        return '🎓';
+        return <GraduationCap color={colors.warning} size={22} />;
       default:
-        return '🎯';
+        return <Target color={colors.accent} size={22} />;
     }
   };
 
@@ -141,7 +152,12 @@ export default function Goals() {
     }
 
     setActionModalVisible(false);
-    showFeedback('Goal balance updated successfully.');
+    setFeedbackState({
+      visible: true,
+      type: 'success',
+      title: modalMode === 'add' ? 'Savings Added' : 'Withdrawal Recorded',
+      message: `Goal balance for "${selectedGoal.name}" updated by ${fmt(amount)}.`,
+    });
   };
 
   // Open Edit Modal
@@ -186,33 +202,25 @@ export default function Goals() {
     });
 
     setEditModalVisible(false);
-    showFeedback('Goal details updated successfully.');
-  };
-
-  // Open Delete Confirmation
-  const handleOpenDeleteModal = (goal: SavingsGoal) => {
-    setDeletingGoal(goal);
-    setDeleteModalVisible(true);
+    setFeedbackState({
+      visible: true,
+      type: 'success',
+      title: 'Goal Updated',
+      message: `Successfully updated parameters for "${editName.trim()}".`,
+    });
   };
 
   const confirmDeleteGoal = () => {
     if (!deletingGoal) return;
-    try {
-      deleteGoal(deletingGoal.id);
-      setDeleteModalVisible(false);
-      setDeletingGoal(null);
-      showFeedback(t('goals.deleteSuccess'));
-    } catch (err) {
-      setDeleteModalVisible(false);
-      Alert.alert(t('general.error'), t('goals.deleteFail'));
-    }
-  };
-
-  const showFeedback = (msg: string) => {
-    setFeedbackMessage(msg);
-    setTimeout(() => {
-      setFeedbackMessage(null);
-    }, 3500);
+    const name = deletingGoal.name;
+    deleteGoal(deletingGoal.id);
+    setDeletingGoal(null);
+    setFeedbackState({
+      visible: true,
+      type: 'success',
+      title: 'Goal Deleted',
+      message: `"${name}" has been removed from your goals.`,
+    });
   };
 
   // Calculate smart savings dynamically
@@ -220,6 +228,29 @@ export default function Goals() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      
+      {/* Feedback Popup Modal */}
+      <FeedbackModal
+        visible={feedbackState.visible}
+        type={feedbackState.type}
+        title={feedbackState.title}
+        message={feedbackState.message}
+        onClose={() => setFeedbackState((s) => ({ ...s, visible: false }))}
+      />
+
+      {/* Delete Confirmation Popup */}
+      <FeedbackModal
+        visible={!!deletingGoal}
+        type="confirm"
+        title="Delete Financial Goal?"
+        message={`Are you sure you want to delete "${deletingGoal?.name}"? Saved metrics will be adjusted.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        isDestructive={true}
+        onConfirm={confirmDeleteGoal}
+        onCancel={() => setDeletingGoal(null)}
+      />
+
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
         <View style={styles.headerInner}>
@@ -243,14 +274,6 @@ export default function Goals() {
         
         <View style={[styles.responsiveContainer, isWideScreen && styles.responsiveContainerWide]}>
           
-          {/* Feedback Alert Toast */}
-          {feedbackMessage && (
-            <View style={[styles.feedbackBox, { backgroundColor: colors.card, borderColor: colors.success }]}>
-              <CheckCircle2 color={colors.success} size={18} />
-              <Text style={[styles.feedbackText, { color: colors.text }]}>{feedbackMessage}</Text>
-            </View>
-          )}
-
           {/* Smart Savings Recommendation Card */}
           <Card style={[styles.smartRecommendCard, { borderColor: colors.border, backgroundColor: colors.backgroundElement }]}>
             <Text style={[styles.smartTitle, { color: colors.text }]}>{t('goals.smartSavingsTitle')}</Text>
@@ -287,7 +310,7 @@ export default function Goals() {
                   {/* Top Row: Icon, Name, Date, Action Buttons */}
                   <View style={styles.goalHeader}>
                     <View style={[styles.iconCircle, { backgroundColor: colors.backgroundElement }]}>
-                      <Text style={styles.goalIconEmoji}>{getGoalIcon(goal.icon)}</Text>
+                      {getGoalIcon(goal.icon)}
                     </View>
                     <View style={styles.goalMeta}>
                       <Text numberOfLines={1} style={[styles.goalName, { color: colors.text }]}>{goal.name}</Text>
@@ -306,7 +329,7 @@ export default function Goals() {
                       <TouchableOpacity
                         accessibilityRole="button"
                         accessibilityLabel="Delete Goal"
-                        onPress={() => handleOpenDeleteModal(goal)}
+                        onPress={() => setDeletingGoal(goal)}
                         style={[styles.headerActionIcon, { backgroundColor: colors.backgroundElement }]}>
                         <Trash2 color={colors.danger} size={15} />
                       </TouchableOpacity>
@@ -424,13 +447,13 @@ export default function Goals() {
                   style={[
                     styles.modalInput,
                     {
-                      color: colors.inputText,
-                      borderColor: colors.inputBorder,
-                      backgroundColor: colors.inputBackground,
+                      color: isDark ? '#F8FAFC' : '#0F172A',
+                      borderColor: isDark ? '#334155' : '#CBD5E1',
+                      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                     },
                   ]}
                   placeholder="e.g. 5000"
-                  placeholderTextColor={colors.inputPlaceholder}
+                  placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                   keyboardType="numeric"
                   value={amountInput}
                   onChangeText={(val) => {
@@ -483,12 +506,12 @@ export default function Goals() {
                   <TextInput
                     style={[
                       styles.modalInput,
-                      { color: colors.inputText, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground },
+                      { color: isDark ? '#F8FAFC' : '#0F172A', borderColor: isDark ? '#334155' : '#CBD5E1', backgroundColor: isDark ? '#1E293B' : '#FFFFFF' },
                     ]}
                     value={editName}
                     onChangeText={setEditName}
                     placeholder="Goal Name"
-                    placeholderTextColor={colors.inputPlaceholder}
+                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                   />
                 </View>
 
@@ -498,13 +521,13 @@ export default function Goals() {
                   <TextInput
                     style={[
                       styles.modalInput,
-                      { color: colors.inputText, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground },
+                      { color: isDark ? '#F8FAFC' : '#0F172A', borderColor: isDark ? '#334155' : '#CBD5E1', backgroundColor: isDark ? '#1E293B' : '#FFFFFF' },
                     ]}
                     value={editTarget}
                     onChangeText={setEditTarget}
                     keyboardType="numeric"
                     placeholder="Target Amount"
-                    placeholderTextColor={colors.inputPlaceholder}
+                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                   />
                 </View>
 
@@ -514,13 +537,13 @@ export default function Goals() {
                   <TextInput
                     style={[
                       styles.modalInput,
-                      { color: colors.inputText, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground },
+                      { color: isDark ? '#F8FAFC' : '#0F172A', borderColor: isDark ? '#334155' : '#CBD5E1', backgroundColor: isDark ? '#1E293B' : '#FFFFFF' },
                     ]}
                     value={editCurrent}
                     onChangeText={setEditCurrent}
                     keyboardType="numeric"
                     placeholder="Current Saved"
-                    placeholderTextColor={colors.inputPlaceholder}
+                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                   />
                 </View>
 
@@ -530,12 +553,12 @@ export default function Goals() {
                   <TextInput
                     style={[
                       styles.modalInput,
-                      { color: colors.inputText, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground },
+                      { color: isDark ? '#F8FAFC' : '#0F172A', borderColor: isDark ? '#334155' : '#CBD5E1', backgroundColor: isDark ? '#1E293B' : '#FFFFFF' },
                     ]}
                     value={editDate}
                     onChangeText={setEditDate}
                     placeholder="YYYY-MM-DD"
-                    placeholderTextColor={colors.inputPlaceholder}
+                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                   />
                 </View>
 
@@ -545,12 +568,12 @@ export default function Goals() {
                   <TextInput
                     style={[
                       styles.modalTextArea,
-                      { color: colors.inputText, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground },
+                      { color: isDark ? '#F8FAFC' : '#0F172A', borderColor: isDark ? '#334155' : '#CBD5E1', backgroundColor: isDark ? '#1E293B' : '#FFFFFF' },
                     ]}
                     value={editDescription}
                     onChangeText={setEditDescription}
                     placeholder="Optional notes or description"
-                    placeholderTextColor={colors.inputPlaceholder}
+                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                     multiline
                     numberOfLines={2}
                   />
@@ -568,38 +591,6 @@ export default function Goals() {
                   label={t('general.save')}
                   onPress={handleEditModalSubmit}
                   style={styles.modalBtn}
-                />
-              </View>
-            </Card>
-          </View>
-        </Modal>
-      )}
-
-      {/* Delete Goal Confirmation Modal */}
-      {deletingGoal && (
-        <Modal
-          animationType="fade"
-          transparent={true}
-          visible={deleteModalVisible}
-          onRequestClose={() => setDeleteModalVisible(false)}>
-          <View style={styles.modalOverlay}>
-            <Card style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('goals.deleteTitle')}</Text>
-              <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
-                {t('goals.deleteConfirm', { name: deletingGoal.name })}
-              </Text>
-
-              <View style={styles.modalActions}>
-                <Button
-                  label={t('goals.deleteCancel')}
-                  variant="secondary"
-                  onPress={() => setDeleteModalVisible(false)}
-                  style={styles.modalBtn}
-                />
-                <Button
-                  label={t('goals.deleteBtn')}
-                  onPress={confirmDeleteGoal}
-                  style={[styles.modalBtn, { backgroundColor: colors.danger }]}
                 />
               </View>
             </Card>
@@ -658,20 +649,6 @@ const styles = StyleSheet.create({
   responsiveContainerWide: {
     paddingHorizontal: Spacing.two,
   },
-  feedbackBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    padding: Spacing.three,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: Spacing.three,
-  },
-  feedbackText: {
-    fontSize: 13,
-    fontWeight: '700',
-    flex: 1,
-  },
   smartRecommendCard: {
     borderWidth: 0,
     padding: Spacing.four,
@@ -724,15 +701,12 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.two,
   },
   iconCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Spacing.three,
-  },
-  goalIconEmoji: {
-    fontSize: 20,
   },
   goalMeta: {
     flex: 1,

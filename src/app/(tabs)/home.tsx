@@ -9,11 +9,29 @@ import {
   RefreshControl,
   Modal,
   TextInput,
-  Alert,
   useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Eye, EyeOff, Bell, User, ArrowUpRight, TrendingUp, Wallet, ShieldAlert, Award, Plus, X } from 'lucide-react-native';
+import {
+  Eye,
+  EyeOff,
+  Bell,
+  User,
+  ArrowUpRight,
+  TrendingUp,
+  Wallet,
+  ShieldAlert,
+  Award,
+  Plus,
+  X,
+  Building2,
+  Smartphone,
+  Target,
+  Receipt,
+  Lightbulb,
+  ShieldCheck,
+  Zap,
+} from 'lucide-react-native';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { Spacing } from '../../constants/theme';
 import Typography from '../../constants/Typography';
@@ -21,6 +39,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import FinancialScore from '../../components/ui/FinancialScore';
 import { LineChart } from '../../components/ui/SimpleChart';
+import FeedbackModal, { FeedbackType } from '../../components/ui/FeedbackModal';
 import { calculateNetWorth, calculateSavingsRate, calculateInvestmentReturns, calculateCategoryExpenses } from '../../services/calculations';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { useTranslation } from '../../i18n';
@@ -54,6 +73,19 @@ export default function Home() {
   // Modals state
   const [txModalVisible, setTxModalVisible] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
+
+  // Feedback Modal State (replaces raw alerts)
+  const [feedbackState, setFeedbackState] = useState<{
+    visible: boolean;
+    type: FeedbackType;
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
 
   // New Transaction Form state
   const [txTitle, setTxTitle] = useState('');
@@ -105,12 +137,22 @@ export default function Home() {
   // Submit manual transaction
   const handleAddTx = () => {
     if (!txTitle.trim()) {
-      Alert.alert(t('general.error'), 'Please enter a transaction title.');
+      setFeedbackState({
+        visible: true,
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Please enter a valid title for the transaction.',
+      });
       return;
     }
     const amt = parseFloat(txAmount);
     if (isNaN(amt) || amt <= 0) {
-      Alert.alert(t('general.error'), 'Please enter a valid positive amount.');
+      setFeedbackState({
+        visible: true,
+        type: 'error',
+        title: 'Invalid Amount',
+        message: 'Please enter a positive transaction amount greater than 0.',
+      });
       return;
     }
     const targetAccount = txAccountId || (accounts[0]?.id || null);
@@ -122,7 +164,12 @@ export default function Home() {
     setTxAmount('');
     setTxModalVisible(false);
     
-    Alert.alert(t('general.success'), 'Transaction added successfully.');
+    setFeedbackState({
+      visible: true,
+      type: 'success',
+      title: 'Transaction Saved',
+      message: `Successfully recorded ${txTitle} (${currency} ${amt.toLocaleString('en-IN')}).`,
+    });
   };
 
   // Dynamic Sparkline Trend Data
@@ -155,9 +202,9 @@ export default function Home() {
   const getSmartInsights = () => {
     if (accounts.length === 0 && transactions.length === 0 && investments.length === 0 && goals.length === 0) {
       return [
-        { emoji: '🏦', text: 'Connect your first bank account or wallet to start aggregating your net worth.' },
-        { emoji: '🎯', text: 'Create an Emergency Fund goal to build financial security for unexpected events.' },
-        { emoji: '📈', text: 'Start a recurring Systematic Investment Plan (SIP) to grow wealth through rupee-cost averaging.' },
+        { icon: <Building2 size={16} color={colors.accent} />, text: 'Connect your first bank account or wallet to start aggregating your net worth.' },
+        { icon: <ShieldCheck size={16} color={colors.success} />, text: 'Create an Emergency Fund goal to build financial security for unexpected events.' },
+        { icon: <TrendingUp size={16} color={colors.warning} />, text: 'Start a recurring Systematic Investment Plan (SIP) to grow wealth through rupee-cost averaging.' },
       ];
     }
 
@@ -166,27 +213,27 @@ export default function Home() {
     if (categoryExpenses.length > 0) {
       const top = categoryExpenses[0];
       insights.push({
-        emoji: '💡',
-        text: `Your highest expense this month is ${top.category} at ${fmt(top.amount)} (${top.percentage.toFixed(0)}% of total spending).`,
+        icon: <Lightbulb size={16} color={colors.warning} />,
+        text: `Highest expense this month: ${top.category} at ${fmt(top.amount)} (${top.percentage.toFixed(0)}% of total spending).`,
       });
     }
 
     if (rate >= 20) {
       insights.push({
-        emoji: '🎉',
-        text: `Great savings discipline! You are saving ${rate.toFixed(0)}% of your monthly income.`,
+        icon: <Zap size={16} color={colors.success} />,
+        text: `Strong savings discipline: You are saving ${rate.toFixed(0)}% of your monthly income.`,
       });
     } else if (income > 0 && rate < 20) {
       insights.push({
-        emoji: '⚠️',
-        text: `Your current savings rate is ${rate.toFixed(0)}%. Aim for at least 20-30% by setting aside savings on salary day.`,
+        icon: <ShieldAlert size={16} color={colors.warning} />,
+        text: `Current savings rate is ${rate.toFixed(0)}%. Aim for at least 20-30% by setting aside savings on salary day.`,
       });
     }
 
     if (investments.length > 0 && returnPercentage !== 0) {
       insights.push({
-        emoji: '📈',
-        text: `Your investment portfolio has a net return of ${totalReturn >= 0 ? '+' : ''}${fmt(totalReturn)} (${returnPercentage.toFixed(1)}%).`,
+        icon: <TrendingUp size={16} color={colors.accent} />,
+        text: `Investment portfolio net return is ${totalReturn >= 0 ? '+' : ''}${fmt(totalReturn)} (${returnPercentage.toFixed(1)}%).`,
       });
     }
 
@@ -194,14 +241,14 @@ export default function Home() {
       const activeGoal = goals[0];
       const goalPct = ((activeGoal.currentAmount / (activeGoal.targetAmount || 1)) * 100).toFixed(0);
       insights.push({
-        emoji: '🎯',
-        text: `You have completed ${goalPct}% of your "${activeGoal.name}" goal. Keep it up!`,
+        icon: <Target size={16} color={colors.accent} />,
+        text: `You have completed ${goalPct}% of your "${activeGoal.name}" goal.`,
       });
     }
 
     if (insights.length === 0) {
       insights.push({
-        emoji: '💡',
+        icon: <Lightbulb size={16} color={colors.accent} />,
         text: 'Record daily income and expenses to unlock personalized financial insights and recommendations.',
       });
     }
@@ -214,12 +261,21 @@ export default function Home() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       
+      {/* Feedback Confirmation / Error / Success Modal */}
+      <FeedbackModal
+        visible={feedbackState.visible}
+        type={feedbackState.type}
+        title={feedbackState.title}
+        message={feedbackState.message}
+        onClose={() => setFeedbackState((s) => ({ ...s, visible: false }))}
+      />
+
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
         <View style={styles.headerInner}>
           <View>
             <Text style={[styles.greetingText, { color: colors.textSecondary }]}>{getLocalizedGreeting()},</Text>
-            <Text style={[styles.userNameText, { color: colors.text }]}>{user?.name || 'User'} 👋</Text>
+            <Text style={[styles.userNameText, { color: colors.text }]}>{user?.name || 'User'}</Text>
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity
@@ -228,7 +284,7 @@ export default function Home() {
               activeOpacity={0.7}
               onPress={() => router.push('/settings/notifications')}
               style={[styles.iconButton, { backgroundColor: colors.backgroundElement, borderColor: colors.border }]}>
-              <Bell color={colors.text} size={20} />
+              <Bell color={colors.text} size={18} />
               {unreadNotifs > 0 && (
                 <View style={[styles.badge, { backgroundColor: colors.danger }]}>
                   <Text style={styles.badgeText}>{unreadNotifs}</Text>
@@ -241,7 +297,7 @@ export default function Home() {
               activeOpacity={0.7}
               onPress={() => router.push('/settings/profile')}
               style={[styles.iconButton, { backgroundColor: colors.backgroundElement, borderColor: colors.border }]}>
-              <User color={colors.text} size={20} />
+              <User color={colors.text} size={18} />
             </TouchableOpacity>
           </View>
         </View>
@@ -264,7 +320,7 @@ export default function Home() {
           {/* Main Dashboard Grid */}
           <View style={[styles.dashboardGrid, isWideScreen && styles.dashboardGridWide]}>
             
-            {/* LEFT COLUMN (or Top on mobile) */}
+            {/* LEFT COLUMN */}
             <View style={[styles.column, isWideScreen && styles.leftColumnWide]}>
               
               {/* Net Worth Card */}
@@ -372,9 +428,11 @@ export default function Home() {
                     onPress={() => router.push(`/account/${acc.id}`)}
                     style={[styles.accountSliderCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
                     <View style={styles.sliderHeader}>
-                      <Text style={styles.sliderProviderEmoji}>
-                        {acc.providerType === 'bank' ? '🏦' : '📱'}
-                      </Text>
+                      {acc.providerType === 'bank' ? (
+                        <Building2 size={16} color={colors.accent} style={styles.sliderIcon} />
+                      ) : (
+                        <Smartphone size={16} color={colors.success} style={styles.sliderIcon} />
+                      )}
                       <Text numberOfLines={1} style={[styles.sliderProviderName, { color: colors.text }]}>
                         {acc.providerName}
                       </Text>
@@ -392,14 +450,14 @@ export default function Home() {
                     activeOpacity={0.8}
                     onPress={() => router.push('/account/connect')}
                     style={[styles.accountSliderEmpty, { borderColor: colors.border, backgroundColor: colors.card }]}>
-                    <Text style={[styles.emptyAddIcon, { color: colors.textSecondary }]}>+</Text>
+                    <Plus size={20} color={colors.textSecondary} />
                     <Text style={[styles.emptyAddText, { color: colors.textSecondary }]}>{t('accounts.connectBtn')}</Text>
                   </TouchableOpacity>
                 )}
               </ScrollView>
             </View>
 
-            {/* RIGHT COLUMN (or Bottom on mobile) */}
+            {/* RIGHT COLUMN */}
             <View style={[styles.column, isWideScreen && styles.rightColumnWide]}>
               
               {/* Quick Actions Panel */}
@@ -410,28 +468,28 @@ export default function Home() {
                     style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
                     onPress={() => router.push('/account/connect')}
                   >
-                    <Text style={styles.quickActionIcon}>🏦</Text>
+                    <Building2 size={20} color={colors.accent} style={styles.quickActionIcon} />
                     <Text numberOfLines={1} style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addAccount')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
                     onPress={() => router.push('/investment/add')}
                   >
-                    <Text style={styles.quickActionIcon}>📈</Text>
+                    <TrendingUp size={20} color={colors.success} style={styles.quickActionIcon} />
                     <Text numberOfLines={1} style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addSip')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
                     onPress={() => router.push('/goals/add')}
                   >
-                    <Text style={styles.quickActionIcon}>🎯</Text>
+                    <Target size={20} color={colors.warning} style={styles.quickActionIcon} />
                     <Text numberOfLines={1} style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addGoal')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
                     onPress={() => setTxModalVisible(true)}
                   >
-                    <Text style={styles.quickActionIcon}>💸</Text>
+                    <Receipt size={20} color={colors.primary} style={styles.quickActionIcon} />
                     <Text numberOfLines={1} style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addTx')}</Text>
                   </TouchableOpacity>
                 </View>
@@ -491,7 +549,7 @@ export default function Home() {
                 <Card style={[styles.insightCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   {dynamicInsights.map((insight, idx) => (
                     <View key={idx} style={styles.insightRow}>
-                      <Text style={styles.insightEmoji}>{insight.emoji}</Text>
+                      <View style={styles.insightIconWrap}>{insight.icon}</View>
                       <Text style={[styles.insightText, { color: colors.text }]}>
                         {insight.text}
                       </Text>
@@ -515,7 +573,7 @@ export default function Home() {
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>{t('dashboard.addTx')}</Text>
               <TouchableOpacity onPress={() => setTxModalVisible(false)}>
-                <X color={colors.text} size={22} />
+                <X color={colors.text} size={20} />
               </TouchableOpacity>
             </View>
 
@@ -525,13 +583,13 @@ export default function Home() {
                 style={[
                   styles.modalInput,
                   {
-                    color: colors.inputText,
-                    borderColor: colors.inputBorder,
-                    backgroundColor: colors.inputBackground,
+                    color: isDark ? '#F8FAFC' : '#0F172A',
+                    borderColor: isDark ? '#334155' : '#CBD5E1',
+                    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                   },
                 ]}
                 placeholder="e.g. Salary, Groceries"
-                placeholderTextColor={colors.inputPlaceholder}
+                placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                 value={txTitle}
                 onChangeText={setTxTitle}
               />
@@ -541,13 +599,13 @@ export default function Home() {
                 style={[
                   styles.modalInput,
                   {
-                    color: colors.inputText,
-                    borderColor: colors.inputBorder,
-                    backgroundColor: colors.inputBackground,
+                    color: isDark ? '#F8FAFC' : '#0F172A',
+                    borderColor: isDark ? '#334155' : '#CBD5E1',
+                    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                   },
                 ]}
                 placeholder="e.g. 5000"
-                placeholderTextColor={colors.inputPlaceholder}
+                placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                 keyboardType="numeric"
                 value={txAmount}
                 onChangeText={setTxAmount}
@@ -648,7 +706,7 @@ export default function Home() {
                 {t('dashboard.comparisonReport')}
               </Text>
               <TouchableOpacity onPress={() => setReportModalVisible(false)}>
-                <X color={colors.text} size={22} />
+                <X color={colors.text} size={20} />
               </TouchableOpacity>
             </View>
 
@@ -747,9 +805,9 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -870,8 +928,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   quickActionIcon: {
-    fontSize: 20,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   quickActionText: {
     ...Typography.caption,
@@ -956,8 +1013,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.one,
   },
-  sliderProviderEmoji: {
-    fontSize: 16,
+  sliderIcon: {
     marginRight: 6,
   },
   sliderProviderName: {
@@ -982,11 +1038,7 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 4,
-  },
-  emptyAddIcon: {
-    fontSize: 24,
-    fontWeight: '700',
+    gap: 6,
   },
   emptyAddText: {
     fontSize: 11,
@@ -1079,8 +1131,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: Spacing.two,
   },
-  insightEmoji: {
-    fontSize: 16,
+  insightIconWrap: {
     marginTop: 2,
   },
   insightText: {

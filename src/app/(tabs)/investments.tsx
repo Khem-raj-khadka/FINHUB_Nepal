@@ -6,7 +6,6 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  Alert,
   RefreshControl,
   TextInput,
   useWindowDimensions,
@@ -19,6 +18,7 @@ import Typography from '../../constants/Typography';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import { LineChart } from '../../components/ui/SimpleChart';
+import FeedbackModal, { FeedbackType } from '../../components/ui/FeedbackModal';
 import { calculateInvestmentReturns } from '../../services/calculations';
 import { Investment, InvestmentStatus, InvestmentCategory } from '../../types';
 import { useAppTheme } from '../../hooks/useAppTheme';
@@ -52,6 +52,22 @@ export default function Investments() {
   const [expandedSipId, setExpandedSipId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Deletion Confirmation State
+  const [deletingInvestment, setDeletingInvestment] = useState<{ id: string; name: string } | null>(null);
+
+  // Feedback Notification Modal
+  const [feedbackState, setFeedbackState] = useState<{
+    visible: boolean;
+    type: FeedbackType;
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
+
   // Dynamic Portfolio Calculations
   const { totalInvested, currentValue, totalReturn, returnPercentage } =
     calculateInvestmentReturns(investments);
@@ -71,23 +87,27 @@ export default function Investments() {
     });
   };
 
-  // Delete investment tracker
-  const handleDeleteInvestment = (id: string, name: string) => {
-    Alert.alert(
-      'Remove Investment Tracker',
-      `Are you sure you want to stop tracking "${name}"?\n\nThis action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () => {
-            deleteInvestment(id);
-            Alert.alert('Success', 'Investment tracker removed.');
-          },
-        },
-      ]
-    );
+  const confirmDeleteInvestment = () => {
+    if (!deletingInvestment) return;
+    const name = deletingInvestment.name;
+    deleteInvestment(deletingInvestment.id);
+    setDeletingInvestment(null);
+    setFeedbackState({
+      visible: true,
+      type: 'success',
+      title: 'Investment Tracker Removed',
+      message: `"${name}" has been removed from your investment portfolio.`,
+    });
+  };
+
+  const handlePaySip = (sipId: string, name: string) => {
+    paySip(sipId);
+    setFeedbackState({
+      visible: true,
+      type: 'success',
+      title: 'SIP Payment Recorded',
+      message: `Successfully marked monthly installment for "${name}" as paid.`,
+    });
   };
 
   // Dynamic Chart Data grounded in actual investments
@@ -146,6 +166,28 @@ export default function Investments() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       
+      {/* Feedback Modal */}
+      <FeedbackModal
+        visible={feedbackState.visible}
+        type={feedbackState.type}
+        title={feedbackState.title}
+        message={feedbackState.message}
+        onClose={() => setFeedbackState((s) => ({ ...s, visible: false }))}
+      />
+
+      {/* Delete Confirmation Popup */}
+      <FeedbackModal
+        visible={!!deletingInvestment}
+        type="confirm"
+        title="Remove Investment Tracker?"
+        message={`Are you sure you want to stop tracking "${deletingInvestment?.name}"?`}
+        confirmLabel="Remove"
+        cancelLabel="Cancel"
+        isDestructive={true}
+        onConfirm={confirmDeleteInvestment}
+        onCancel={() => setDeletingInvestment(null)}
+      />
+
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
         <View style={styles.headerInner}>
@@ -233,12 +275,12 @@ export default function Investments() {
             <View style={[styles.column, isWideScreen && styles.rightColumnWide]}>
               
               {/* Search Bar */}
-              <View style={[styles.searchBox, { borderColor: colors.inputBorder, backgroundColor: colors.inputBackground }]}>
-                <Search color={colors.inputPlaceholder} size={18} style={styles.searchIcon} />
+              <View style={[styles.searchBox, { borderColor: isDark ? '#334155' : '#CBD5E1', backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
+                <Search color={isDark ? '#94A3B8' : '#64748B'} size={18} style={styles.searchIcon} />
                 <TextInput
-                  style={[styles.searchInput, { color: colors.inputText }]}
+                  style={[styles.searchInput, { color: isDark ? '#F8FAFC' : '#0F172A' }]}
                   placeholder={t('invest.searchPlaceholder')}
-                  placeholderTextColor={colors.inputPlaceholder}
+                  placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                 />
@@ -368,7 +410,7 @@ export default function Investments() {
                             {(!isPaid && (isDueSoon || isOverdue)) && (
                               <TouchableOpacity
                                 activeOpacity={0.7}
-                                onPress={() => paySip(sip.id)}
+                                onPress={() => handlePaySip(sip.id, sip.name)}
                                 style={[styles.payActionBtn, { backgroundColor: colors.success }]}
                               >
                                 <Text style={styles.payBtnText}>{t('invest.markAsPaid')}</Text>
@@ -382,17 +424,17 @@ export default function Investments() {
                               <Text style={[styles.historyTitle, { color: colors.text }]}>{t('invest.paymentHistory')}</Text>
                               {sip.paymentHistory && sip.paymentHistory.map((hist) => (
                                 <View key={hist.id} style={styles.historyRow}>
-                                  <View style={styles.historyLabelCell}>
-                                    <Calendar color={colors.textSecondary} size={14} />
-                                    <Text style={[styles.historyDate, { color: colors.text }]}>
-                                      {new Date(hist.dueDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                                    </Text>
-                                  </View>
-                                  <Text style={[styles.historyAmt, { color: colors.textSecondary }]}>{fmt(hist.amount)}</Text>
-                                  <Text style={[styles.historyStatus, { color: colors.success }]}>
-                                    {t('invest.filterPaid')}
-                                  </Text>
-                                </View>
+                                   <View style={styles.historyLabelCell}>
+                                     <Calendar color={colors.textSecondary} size={14} />
+                                     <Text style={[styles.historyDate, { color: colors.text }]}>
+                                       {new Date(hist.dueDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                                     </Text>
+                                   </View>
+                                   <Text style={[styles.historyAmt, { color: colors.textSecondary }]}>{fmt(hist.amount)}</Text>
+                                   <Text style={[styles.historyStatus, { color: colors.success }]}>
+                                     {t('invest.filterPaid')}
+                                   </Text>
+                                 </View>
                               ))}
                               {(!sip.paymentHistory || sip.paymentHistory.length === 0) && (
                                 <Text style={[styles.noHistoryText, { color: colors.textSecondary }]}>No payments logged yet.</Text>
@@ -418,7 +460,7 @@ export default function Investments() {
                       <Card key={sip.id} style={[styles.sipTrackerCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
                         <View style={styles.trackerHeader}>
                           <Text style={[styles.trackerName, { color: colors.text }]}>{sip.name}</Text>
-                          <TouchableOpacity onPress={() => handleDeleteInvestment(sip.id, sip.name)}>
+                          <TouchableOpacity onPress={() => setDeletingInvestment({ id: sip.id, name: sip.name })}>
                             <Trash2 color={colors.danger} size={18} />
                           </TouchableOpacity>
                         </View>
@@ -454,7 +496,7 @@ export default function Investments() {
                     <Card key={mf.id} style={[styles.sipTrackerCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
                       <View style={styles.trackerHeader}>
                         <Text style={[styles.trackerName, { color: colors.text }]}>{mf.name}</Text>
-                        <TouchableOpacity onPress={() => handleDeleteInvestment(mf.id, mf.name)}>
+                        <TouchableOpacity onPress={() => setDeletingInvestment({ id: mf.id, name: mf.name })}>
                           <Trash2 color={colors.danger} size={18} />
                         </TouchableOpacity>
                       </View>
@@ -486,7 +528,7 @@ export default function Investments() {
                     <Card key={fd.id} style={[styles.sipTrackerCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
                       <View style={styles.trackerHeader}>
                         <Text style={[styles.trackerName, { color: colors.text }]}>{fd.name}</Text>
-                        <TouchableOpacity onPress={() => handleDeleteInvestment(fd.id, fd.name)}>
+                        <TouchableOpacity onPress={() => setDeletingInvestment({ id: fd.id, name: fd.name })}>
                           <Trash2 color={colors.danger} size={18} />
                         </TouchableOpacity>
                       </View>
@@ -524,7 +566,7 @@ export default function Investments() {
                     <Card key={oth.id} style={[styles.sipTrackerCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
                       <View style={styles.trackerHeader}>
                         <Text style={[styles.trackerName, { color: colors.text }]}>{oth.name}</Text>
-                        <TouchableOpacity onPress={() => handleDeleteInvestment(oth.id, oth.name)}>
+                        <TouchableOpacity onPress={() => setDeletingInvestment({ id: oth.id, name: oth.name })}>
                           <Trash2 color={colors.danger} size={18} />
                         </TouchableOpacity>
                       </View>

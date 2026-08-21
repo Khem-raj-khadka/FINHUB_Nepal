@@ -7,7 +7,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Modal,
   useWindowDimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -18,13 +17,14 @@ import { useAppTheme } from '../../hooks/useAppTheme';
 import { useTranslation } from '../../i18n';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+import FeedbackModal, { FeedbackType } from '../../components/ui/FeedbackModal';
 
 type SortOption = 'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc';
 
 export default function AccountDetails() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
   const { t } = useTranslation();
   const { width: windowWidth } = useWindowDimensions();
   const isWideScreen = windowWidth >= 768;
@@ -44,9 +44,21 @@ export default function AccountDetails() {
   const pageSize = 10;
 
   // Modals State
-  const [disconnectModalVisible, setDisconnectModalVisible] = useState(false);
-  const [deleteTxModalVisible, setDeleteTxModalVisible] = useState(false);
+  const [disconnectConfirmVisible, setDisconnectConfirmVisible] = useState(false);
   const [txToDelete, setTxToDelete] = useState<{ id: string; title: string; amount: number } | null>(null);
+
+  // Feedback Notification Modal
+  const [feedbackState, setFeedbackState] = useState<{
+    visible: boolean;
+    type: FeedbackType;
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
 
   if (!account) {
     return (
@@ -128,7 +140,7 @@ export default function AccountDetails() {
   };
 
   const confirmDisconnect = () => {
-    setDisconnectModalVisible(false);
+    setDisconnectConfirmVisible(false);
     removeAccount(account.id);
     if (router.canGoBack()) {
       router.back();
@@ -137,79 +149,57 @@ export default function AccountDetails() {
     }
   };
 
-  const handleDeleteTxPress = (tx: { id: string; title: string; amount: number }) => {
-    setTxToDelete(tx);
-    setDeleteTxModalVisible(true);
-  };
-
   const confirmDeleteTx = () => {
     if (txToDelete) {
       deleteTransaction(txToDelete.id);
-      setDeleteTxModalVisible(false);
+      const title = txToDelete.title;
       setTxToDelete(null);
+      setFeedbackState({
+        visible: true,
+        type: 'success',
+        title: 'Transaction Deleted',
+        message: `Successfully deleted "${title}". Account balance has been updated.`,
+      });
     }
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       
-      {/* 1. Disconnect Account Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={disconnectModalVisible}
-        onRequestClose={() => setDisconnectModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <Card style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Disconnect Account?</Text>
-            <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
-              Are you sure you want to unlink {account.providerName}? This will remove its balance and transactions from your Net Worth calculations.
-            </Text>
-            <View style={styles.modalActions}>
-              <Button
-                label="Cancel"
-                variant="secondary"
-                onPress={() => setDisconnectModalVisible(false)}
-                style={styles.modalBtn}
-              />
-              <Button
-                label="Unlink Account"
-                onPress={confirmDisconnect}
-                style={[styles.modalBtn, { backgroundColor: colors.danger }]}
-              />
-            </View>
-          </Card>
-        </View>
-      </Modal>
+      {/* 1. Feedback Modal */}
+      <FeedbackModal
+        visible={feedbackState.visible}
+        type={feedbackState.type}
+        title={feedbackState.title}
+        message={feedbackState.message}
+        onClose={() => setFeedbackState((s) => ({ ...s, visible: false }))}
+      />
 
-      {/* 2. Delete Transaction Confirmation Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={deleteTxModalVisible}
-        onRequestClose={() => setDeleteTxModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <Card style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Delete Transaction?</Text>
-            <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
-              Are you sure you want to delete "{txToDelete?.title}" ({fmt(txToDelete?.amount || 0)})? The account balance will be automatically adjusted.
-            </Text>
-            <View style={styles.modalActions}>
-              <Button
-                label="Cancel"
-                variant="secondary"
-                onPress={() => setDeleteTxModalVisible(false)}
-                style={styles.modalBtn}
-              />
-              <Button
-                label="Delete"
-                onPress={confirmDeleteTx}
-                style={[styles.modalBtn, { backgroundColor: colors.danger }]}
-              />
-            </View>
-          </Card>
-        </View>
-      </Modal>
+      {/* 2. Disconnect Account Confirmation */}
+      <FeedbackModal
+        visible={disconnectConfirmVisible}
+        type="confirm"
+        title="Disconnect Account?"
+        message={`Are you sure you want to unlink ${account.providerName}? This will remove its balance and transactions from your Net Worth calculations.`}
+        confirmLabel="Unlink"
+        cancelLabel="Cancel"
+        isDestructive={true}
+        onConfirm={confirmDisconnect}
+        onCancel={() => setDisconnectConfirmVisible(false)}
+      />
+
+      {/* 3. Delete Transaction Confirmation */}
+      <FeedbackModal
+        visible={!!txToDelete}
+        type="confirm"
+        title="Delete Transaction?"
+        message={`Are you sure you want to delete "${txToDelete?.title}" (${fmt(txToDelete?.amount || 0)})? The account balance will be automatically adjusted.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        isDestructive={true}
+        onConfirm={confirmDeleteTx}
+        onCancel={() => setTxToDelete(null)}
+      />
       
       {/* Account Info Header */}
       <View style={[styles.accountHeader, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
@@ -251,12 +241,12 @@ export default function AccountDetails() {
           </View>
 
           {/* Search Bar */}
-          <View style={[styles.searchBox, { borderColor: colors.inputBorder, backgroundColor: colors.inputBackground }]}>
-            <Search color={colors.inputPlaceholder} size={16} />
+          <View style={[styles.searchBox, { borderColor: isDark ? '#334155' : '#CBD5E1', backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
+            <Search color={isDark ? '#94A3B8' : '#64748B'} size={16} />
             <TextInput
-              style={[styles.searchInput, { color: colors.inputText }]}
+              style={[styles.searchInput, { color: isDark ? '#F8FAFC' : '#0F172A' }]}
               placeholder="Search transactions by title or category..."
-              placeholderTextColor={colors.inputPlaceholder}
+              placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
               value={searchQuery}
               onChangeText={(t) => {
                 setSearchQuery(t);
@@ -403,7 +393,7 @@ export default function AccountDetails() {
                     <TouchableOpacity
                       accessibilityRole="button"
                       accessibilityLabel="Delete Transaction"
-                      onPress={() => handleDeleteTxPress(tx)}
+                      onPress={() => setTxToDelete(tx)}
                       style={[styles.deleteTxBtn, { backgroundColor: colors.backgroundElement }]}>
                       <Trash2 color={colors.danger} size={14} />
                     </TouchableOpacity>
@@ -459,7 +449,7 @@ export default function AccountDetails() {
           <Button
             label="Disconnect Account"
             variant="danger"
-            onPress={() => setDisconnectModalVisible(true)}
+            onPress={() => setDisconnectConfirmVisible(true)}
             style={styles.disconnectBtn}
           />
 
@@ -731,36 +721,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: Spacing.three,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Spacing.four,
-  },
-  modalCard: {
-    width: '100%',
-    maxWidth: 400,
-    padding: Spacing.four,
-    borderWidth: 1,
-    borderRadius: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: Spacing.one,
-  },
-  modalSubtitle: {
-    fontSize: 13.5,
-    lineHeight: 19,
-    marginBottom: Spacing.four,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  modalBtn: {
-    flex: 1,
   },
 });

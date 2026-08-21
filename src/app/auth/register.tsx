@@ -14,7 +14,7 @@ import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Eye, EyeOff } from 'lucide-react-native';
+import { Eye, EyeOff, Shield } from 'lucide-react-native';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { Spacing } from '../../constants/theme';
 import { useAppTheme } from '../../hooks/useAppTheme';
@@ -37,7 +37,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function Register() {
   const router = useRouter();
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
 
   const signUp = useFinanceStore((state) => state.signUp);
   const [loading, setLoading] = useState(false);
@@ -80,8 +80,13 @@ export default function Register() {
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {/* Header */}
           <View style={styles.brandHeader}>
-            <Text style={[styles.logoText, { color: colors.text }]}>FINHUB</Text>
-            <Text style={[styles.logoTextHighlight, { color: colors.accent }]}>NEPAL</Text>
+            <View style={[styles.brandIconWrapper, { backgroundColor: `${colors.accent}18` }]}>
+              <Shield color={colors.accent} size={30} />
+            </View>
+            <View style={styles.brandTitleRow}>
+              <Text style={[styles.logoText, { color: colors.text }]}>FINHUB</Text>
+              <Text style={[styles.logoTextHighlight, { color: colors.accent }]}>NEPAL</Text>
+            </View>
           </View>
 
           {/* Form Card */}
@@ -105,13 +110,13 @@ export default function Register() {
                     style={[
                       styles.input,
                       {
-                        color: colors.inputText,
-                        borderColor: errors.fullName ? colors.danger : colors.inputBorder,
-                        backgroundColor: colors.inputBackground,
+                        color: isDark ? '#F8FAFC' : '#0F172A',
+                        borderColor: errors.fullName ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                       },
                     ]}
                     placeholder="e.g. Khem Raj"
-                    placeholderTextColor={colors.inputPlaceholder}
+                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
@@ -136,13 +141,13 @@ export default function Register() {
                     style={[
                       styles.input,
                       {
-                        color: colors.inputText,
-                        borderColor: errors.email ? colors.danger : colors.inputBorder,
-                        backgroundColor: colors.inputBackground,
+                        color: isDark ? '#F8FAFC' : '#0F172A',
+                        borderColor: errors.email ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                       },
                     ]}
                     placeholder="e.g. yourname@example.com"
-                    placeholderTextColor={colors.inputPlaceholder}
+                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
@@ -171,13 +176,13 @@ export default function Register() {
                         styles.input,
                         styles.passwordInput,
                         {
-                          color: colors.inputText,
-                          borderColor: errors.password ? colors.danger : colors.inputBorder,
-                          backgroundColor: colors.inputBackground,
+                          color: isDark ? '#F8FAFC' : '#0F172A',
+                          borderColor: errors.password ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
+                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                         },
                       ]}
                       placeholder="Minimum 6 characters"
-                      placeholderTextColor={colors.inputPlaceholder}
+                      placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
@@ -189,9 +194,9 @@ export default function Register() {
                       onPress={() => setShowPassword(!showPassword)}
                       style={styles.eyeToggleBtn}>
                       {showPassword ? (
-                        <EyeOff color={colors.textSecondary} size={20} />
+                        <EyeOff color={colors.textSecondary} size={18} />
                       ) : (
-                        <Eye color={colors.textSecondary} size={20} />
+                        <Eye color={colors.textSecondary} size={18} />
                       )}
                     </TouchableOpacity>
                   </View>
@@ -217,13 +222,13 @@ export default function Register() {
                         styles.input,
                         styles.passwordInput,
                         {
-                          color: colors.inputText,
-                          borderColor: errors.confirmPassword ? colors.danger : colors.inputBorder,
-                          backgroundColor: colors.inputBackground,
+                          color: isDark ? '#F8FAFC' : '#0F172A',
+                          borderColor: errors.confirmPassword ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
+                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                         },
                       ]}
                       placeholder="Re-enter password"
-                      placeholderTextColor={colors.inputPlaceholder}
+                      placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
@@ -235,9 +240,9 @@ export default function Register() {
                       onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                       style={styles.eyeToggleBtn}>
                       {showConfirmPassword ? (
-                        <EyeOff color={colors.textSecondary} size={20} />
+                        <EyeOff color={colors.textSecondary} size={18} />
                       ) : (
-                        <Eye color={colors.textSecondary} size={20} />
+                        <Eye color={colors.textSecondary} size={18} />
                       )}
                     </TouchableOpacity>
                   </View>
@@ -252,7 +257,7 @@ export default function Register() {
 
             {/* Submit */}
             <Button
-              label="Sign Up"
+              label="Create Account"
               onPress={handleSubmit(onSubmit)}
               loading={loading}
               style={styles.signUpBtn}
@@ -295,24 +300,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.four,
   },
+  brandIconWrapper: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.two,
+  },
+  brandTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   logoText: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
-    letterSpacing: 2,
+    letterSpacing: 1.5,
   },
   logoTextHighlight: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
-    letterSpacing: 2,
-    marginTop: -4,
+    letterSpacing: 1.5,
   },
   card: {
     padding: Spacing.four,
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: 18,
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     marginBottom: Spacing.four,
   },
@@ -330,9 +347,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.three,
   },
   label: {
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '600',
-    marginBottom: Spacing.one * 1.5,
+    marginBottom: Spacing.one * 1.2,
   },
   passwordWrapper: {
     position: 'relative',
@@ -341,9 +358,9 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1.5,
     borderRadius: 10,
-    paddingVertical: Spacing.two * 1.5,
+    paddingVertical: Spacing.two * 1.4,
     paddingHorizontal: Spacing.three,
-    fontSize: 15,
+    fontSize: 14.5,
   },
   passwordInput: {
     paddingRight: 48,
@@ -357,7 +374,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   errorText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '500',
     marginTop: Spacing.one,
   },
@@ -370,10 +387,10 @@ const styles = StyleSheet.create({
     marginTop: Spacing.four,
   },
   footerText: {
-    fontSize: 14,
+    fontSize: 13.5,
   },
   footerLink: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '700',
   },
   bottomSpacer: {

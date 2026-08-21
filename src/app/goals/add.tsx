@@ -14,11 +14,13 @@ import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { Target, Shield, Laptop, Car, Home as HomeIcon, Compass, GraduationCap, AlertCircle } from 'lucide-react-native';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { Spacing } from '../../constants/theme';
 import Typography from '../../constants/Typography';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
+import FeedbackModal, { FeedbackType } from '../../components/ui/FeedbackModal';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { useTranslation } from '../../i18n';
 
@@ -40,13 +42,26 @@ type GoalFormData = z.infer<typeof goalSchema>;
 
 export default function AddGoal() {
   const router = useRouter();
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
   const { t } = useTranslation();
 
   // Zustand
   const { addGoal } = useFinanceStore();
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Feedback popup modal
+  const [feedbackState, setFeedbackState] = useState<{
+    visible: boolean;
+    type: FeedbackType;
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
 
   // Default target date: 6 months from today
   const defaultTargetDate = new Date(Date.now() + 180 * 24 * 3600 * 1000)
@@ -74,13 +89,13 @@ export default function AddGoal() {
   const selectedIcon = watch('icon');
 
   const iconsList = [
-    { name: 'Target', symbol: '🎯', label: 'Goal' },
-    { name: 'Shield', symbol: '🛡️', label: 'Emergency' },
-    { name: 'Laptop', symbol: '💻', label: 'Tech' },
-    { name: 'Car', symbol: '🏍️', label: 'Vehicle' },
-    { name: 'Home', symbol: '🏠', label: 'House' },
-    { name: 'Compass', symbol: '🧭', label: 'Travel' },
-    { name: 'Graduation', symbol: '🎓', label: 'Education' },
+    { name: 'Target', icon: <Target size={20} color={colors.accent} />, label: 'Goal' },
+    { name: 'Shield', icon: <Shield size={20} color={colors.accent} />, label: 'Emergency' },
+    { name: 'Laptop', icon: <Laptop size={20} color={colors.info} />, label: 'Tech' },
+    { name: 'Car', icon: <Car size={20} color={colors.warning} />, label: 'Vehicle' },
+    { name: 'Home', icon: <HomeIcon size={20} color={colors.success} />, label: 'House' },
+    { name: 'Compass', icon: <Compass size={20} color={colors.accent} />, label: 'Travel' },
+    { name: 'Graduation', icon: <GraduationCap size={20} color={colors.warning} />, label: 'Education' },
   ];
 
   const quickTemplates = [
@@ -120,15 +135,35 @@ export default function AddGoal() {
       );
 
       setLoading(false);
-      router.replace('/(tabs)/goals');
+      setFeedbackState({
+        visible: true,
+        type: 'success',
+        title: 'Goal Created',
+        message: `Successfully created "${data.name}". Track your savings progress in the Goals tab.`,
+      });
     } catch (err) {
       setLoading(false);
       setFormError('An unexpected error occurred while saving the goal.');
     }
   };
 
+  const handleFeedbackClose = () => {
+    setFeedbackState((s) => ({ ...s, visible: false }));
+    router.replace('/(tabs)/goals');
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      
+      {/* Feedback Modal */}
+      <FeedbackModal
+        visible={feedbackState.visible}
+        type={feedbackState.type}
+        title={feedbackState.title}
+        message={feedbackState.message}
+        onClose={handleFeedbackClose}
+      />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}>
@@ -137,23 +172,25 @@ export default function AddGoal() {
           {/* Quick suggestions header */}
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Popular Goal Templates</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.templateScroll}>
-            {quickTemplates.map((tpl, i) => (
-              <TouchableOpacity
-                key={i}
-                activeOpacity={0.7}
-                onPress={() => handleApplyTemplate(tpl)}
-                style={[styles.templateChip, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Text style={styles.templateIcon}>
-                  {iconsList.find((ic) => ic.name === tpl.icon)?.symbol || '🎯'}
-                </Text>
-                <Text style={[styles.templateText, { color: colors.text }]}>{tpl.name}</Text>
-              </TouchableOpacity>
-            ))}
+            {quickTemplates.map((tpl, i) => {
+              const matchedIcon = iconsList.find((ic) => ic.name === tpl.icon)?.icon;
+              return (
+                <TouchableOpacity
+                  key={i}
+                  activeOpacity={0.7}
+                  onPress={() => handleApplyTemplate(tpl)}
+                  style={[styles.templateChip, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <View style={styles.templateIconWrap}>{matchedIcon || <Target size={18} color={colors.accent} />}</View>
+                  <Text style={[styles.templateText, { color: colors.text }]}>{tpl.name}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
 
           <Card style={[styles.card, { borderColor: colors.border, backgroundColor: colors.card }]}>
             {formError && (
               <View style={[styles.errorBox, { backgroundColor: `${colors.danger}15` }]}>
+                <AlertCircle color={colors.danger} size={16} />
                 <Text style={[styles.errorBoxText, { color: colors.danger }]}>{formError}</Text>
               </View>
             )}
@@ -175,7 +212,7 @@ export default function AddGoal() {
                         backgroundColor: `${colors.accent}20`,
                       },
                     ]}>
-                    <Text style={styles.iconSymbol}>{ic.symbol}</Text>
+                    <View style={styles.iconSymbol}>{ic.icon}</View>
                     <Text style={[styles.iconLabel, { color: selectedIcon === ic.name ? colors.accent : colors.textSecondary }]}>
                       {ic.label}
                     </Text>
@@ -195,13 +232,13 @@ export default function AddGoal() {
                     style={[
                       styles.input,
                       {
-                        color: colors.inputText,
-                        borderColor: errors.name ? colors.danger : colors.inputBorder,
-                        backgroundColor: colors.inputBackground,
+                        color: isDark ? '#F8FAFC' : '#0F172A',
+                        borderColor: errors.name ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                       },
                     ]}
                     placeholder="e.g. Emergency Fund, Buy a Laptop, Travel Fund"
-                    placeholderTextColor={colors.inputPlaceholder}
+                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
@@ -224,13 +261,13 @@ export default function AddGoal() {
                     style={[
                       styles.input,
                       {
-                        color: colors.inputText,
-                        borderColor: errors.targetAmount ? colors.danger : colors.inputBorder,
-                        backgroundColor: colors.inputBackground,
+                        color: isDark ? '#F8FAFC' : '#0F172A',
+                        borderColor: errors.targetAmount ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                       },
                     ]}
                     placeholder="e.g. 150000"
-                    placeholderTextColor={colors.inputPlaceholder}
+                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                     keyboardType="numeric"
                     onBlur={onBlur}
                     onChangeText={(text) => {
@@ -259,13 +296,13 @@ export default function AddGoal() {
                     style={[
                       styles.input,
                       {
-                        color: colors.inputText,
-                        borderColor: errors.currentAmount ? colors.danger : colors.inputBorder,
-                        backgroundColor: colors.inputBackground,
+                        color: isDark ? '#F8FAFC' : '#0F172A',
+                        borderColor: errors.currentAmount ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                       },
                     ]}
                     placeholder="e.g. 25000 (enter 0 if starting new)"
-                    placeholderTextColor={colors.inputPlaceholder}
+                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                     keyboardType="numeric"
                     onBlur={onBlur}
                     onChangeText={(text) => {
@@ -294,13 +331,13 @@ export default function AddGoal() {
                     style={[
                       styles.input,
                       {
-                        color: colors.inputText,
-                        borderColor: errors.targetDate ? colors.danger : colors.inputBorder,
-                        backgroundColor: colors.inputBackground,
+                        color: isDark ? '#F8FAFC' : '#0F172A',
+                        borderColor: errors.targetDate ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                       },
                     ]}
                     placeholder="e.g. 2027-06-30"
-                    placeholderTextColor={colors.inputPlaceholder}
+                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
@@ -325,13 +362,13 @@ export default function AddGoal() {
                     style={[
                       styles.textArea,
                       {
-                        color: colors.inputText,
-                        borderColor: colors.inputBorder,
-                        backgroundColor: colors.inputBackground,
+                        color: isDark ? '#F8FAFC' : '#0F172A',
+                        borderColor: isDark ? '#334155' : '#CBD5E1',
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                       },
                     ]}
                     placeholder="Add purpose, milestones, or notes for this goal..."
-                    placeholderTextColor={colors.inputPlaceholder}
+                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
@@ -389,10 +426,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     borderRadius: 12,
     borderWidth: 1,
-    gap: Spacing.one * 1.5,
+    gap: Spacing.two,
   },
-  templateIcon: {
-    fontSize: 16,
+  templateIconWrap: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   templateText: {
     fontSize: 13,
@@ -404,14 +442,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
     padding: Spacing.two * 1.5,
     borderRadius: 8,
     marginBottom: Spacing.three,
   },
   errorBoxText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '600',
-    textAlign: 'center',
   },
   inputGroup: {
     marginBottom: Spacing.three,
@@ -437,7 +477,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconSymbol: {
-    fontSize: 20,
     marginBottom: 4,
   },
   iconLabel: {
@@ -449,7 +488,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: Spacing.two * 1.5,
     paddingHorizontal: Spacing.three,
-    fontSize: 15,
+    fontSize: 14.5,
   },
   textArea: {
     borderWidth: 1.5,
@@ -461,7 +500,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   errorText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '600',
     marginTop: Spacing.one,
   },

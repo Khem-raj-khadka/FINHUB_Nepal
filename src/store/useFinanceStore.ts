@@ -211,8 +211,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
                 id: 'welcome-msg',
                 sender: 'ai',
                 text: language === 'ne'
-                  ? `नमस्ते Khem Raj! 🙏 म तपाईंको वित्तीय बुद्धिमत्ता कोच हुँ। म तपाईंको बजेट वा बचत लक्ष्यहरू सुधार गर्न कसरी मद्दत गर्न सक्छु?`
-                  : `Namaste Khem Raj! 🙏 I am your FinHub Financial Coach. How can I help you optimize your investments or savings goals today?`,
+                  ? `नमस्ते Khem Raj! म तपाईंको वित्तीय बुद्धिमत्ता कोच हुँ। म तपाईंको बजेट वा बचत लक्ष्यहरू सुधार गर्न कसरी मद्दत गर्न सक्छु?`
+                  : `Namaste Khem Raj! I am your FinHub Financial Coach. How can I help you optimize your investments or savings goals today?`,
                 timestamp: new Date().toISOString(),
               },
             ],
@@ -246,8 +246,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
                 id: 'welcome-msg-reg',
                 sender: 'ai',
                 text: language === 'ne'
-                  ? `नमस्ते ${userObj?.name || 'साथी'}! 🙏 म तपाईंको वित्तीय बुद्धिमत्ता कोच हुँ।`
-                  : `Namaste ${userObj?.name || 'there'}! 🙏 I am your FinHub Financial Coach. How can I help you optimize your finances today?`,
+                  ? `नमस्ते ${userObj?.name || 'साथी'}! म तपाईंको वित्तीय बुद्धिमत्ता कोच हुँ।`
+                  : `Namaste ${userObj?.name || 'there'}! I am your FinHub Financial Coach. How can I help you optimize your finances today?`,
                 timestamp: new Date().toISOString(),
               },
             ],
@@ -286,8 +286,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
           id: 'welcome-msg',
           sender: 'ai',
           text: lang === 'ne'
-            ? `नमस्ते Khem Raj! 🙏 म तपाईंको वित्तीय बुद्धिमत्ता कोच हुँ। म तपाईंको बजेट वा बचत लक्ष्यहरू सुधार गर्न कसरी मद्दत गर्न सक्छु?`
-            : `Namaste Khem Raj! 🙏 I am your FinHub Financial Coach. How can I help you optimize your investments or savings goals today?`,
+            ? `नमस्ते Khem Raj! म तपाईंको वित्तीय बुद्धिमत्ता कोच हुँ। म तपाईंको बजेट वा बचत लक्ष्यहरू सुधार गर्न कसरी मद्दत गर्न सक्छु?`
+            : `Namaste Khem Raj! I am your FinHub Financial Coach. How can I help you optimize your investments or savings goals today?`,
           timestamp: new Date().toISOString(),
         },
       ],
@@ -495,7 +495,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
         {
           id: 'welcome-msg-new',
           sender: 'ai',
-          text: `Welcome to FinHub Nepal, ${cleanName}! 🙏 Connect an account or add your first savings goal to get started!`,
+          text: `Welcome to FinHub Nepal, ${cleanName}! Connect an account or add your first savings goal to get started!`,
           timestamp: new Date().toISOString(),
         },
       ],
@@ -1093,7 +1093,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       updatedNotifications.unshift({
         id: `notif-goal-${Date.now()}`,
         userId: user?.id || 'guest',
-        title: 'Goal Achieved! 🎉',
+        title: 'Goal Achieved!',
         message: `Incredible job! You saved the full Rs. ${goalObj.targetAmount.toLocaleString('en-IN')} for "${goalObj.name}".`,
         type: 'milestone',
         isRead: false,

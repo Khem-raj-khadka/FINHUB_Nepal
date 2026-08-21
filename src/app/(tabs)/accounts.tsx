@@ -11,7 +11,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Plus, RefreshCw, ChevronRight, AlertCircle, Search } from 'lucide-react-native';
+import { Plus, RefreshCw, ChevronRight, AlertCircle, Search, Building2, Smartphone } from 'lucide-react-native';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { Spacing } from '../../constants/theme';
 import Typography from '../../constants/Typography';
@@ -22,7 +22,7 @@ import { useTranslation } from '../../i18n';
 
 export default function Accounts() {
   const router = useRouter();
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
   const { t } = useTranslation();
   const { width: windowWidth } = useWindowDimensions();
   const isWideScreen = windowWidth >= 768;
@@ -103,12 +103,18 @@ export default function Accounts() {
           </Card>
 
           {/* Search Bar */}
-          <View style={[styles.searchBox, { borderColor: colors.inputBorder, backgroundColor: colors.inputBackground }]}>
-            <Search color={colors.inputPlaceholder} size={18} style={styles.searchIcon} />
+          <View style={[
+            styles.searchBox, 
+            { 
+              borderColor: isDark ? '#334155' : '#CBD5E1', 
+              backgroundColor: isDark ? '#1E293B' : '#FFFFFF' 
+            }
+          ]}>
+            <Search color={isDark ? '#94A3B8' : '#64748B'} size={18} style={styles.searchIcon} />
             <TextInput
-              style={[styles.searchInput, { color: colors.inputText }]}
+              style={[styles.searchInput, { color: isDark ? '#F8FAFC' : '#0F172A' }]}
               placeholder={t('accounts.searchPlaceholder')}
-              placeholderTextColor={colors.inputPlaceholder}
+              placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
@@ -155,9 +161,11 @@ export default function Accounts() {
                 ]}>
                 <View style={styles.cardLayout}>
                   <View style={[styles.emojiContainer, { backgroundColor: colors.backgroundElement }]}>
-                    <Text style={styles.providerEmoji}>
-                      {acc.providerType === 'bank' ? '🏦' : '📱'}
-                    </Text>
+                    {acc.providerType === 'bank' ? (
+                      <Building2 size={20} color={colors.accent} />
+                    ) : (
+                      <Smartphone size={20} color={colors.success} />
+                    )}
                   </View>
                   <View style={styles.infoContainer}>
                     <Text numberOfLines={1} style={[styles.providerName, { color: colors.text }]}>{acc.providerName}</Text>
@@ -349,9 +357,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Spacing.three,
-  },
-  providerEmoji: {
-    fontSize: 20,
   },
   infoContainer: {
     flex: 1,

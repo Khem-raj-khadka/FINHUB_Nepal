@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { Mail, CheckCircle2 } from 'lucide-react-native';
 import { Spacing } from '../../constants/theme';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import Button from '../../components/ui/Button';
@@ -26,7 +27,7 @@ type ForgotFormData = z.infer<typeof forgotSchema>;
 
 export default function ForgotPassword() {
   const router = useRouter();
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -48,7 +49,7 @@ export default function ForgotPassword() {
       setTimeout(() => {
         setLoading(false);
         setSuccess(true);
-      }, 1000);
+      }, 600);
     } catch (err) {
       setLoading(false);
     }
@@ -65,13 +66,15 @@ export default function ForgotPassword() {
             
             {success ? (
               <View style={styles.successContainer}>
-                <Text style={styles.successEmoji}>✉️</Text>
+                <View style={[styles.iconWrapper, { backgroundColor: `${colors.success}18` }]}>
+                  <CheckCircle2 color={colors.success} size={36} />
+                </View>
                 <Text style={[styles.successTitle, { color: colors.text }]}>Check your email</Text>
                 <Text style={[styles.successDesc, { color: colors.textSecondary }]}>
                   We have sent instructions to reset your password. Please check your inbox.
                 </Text>
                 <Button
-                  label="Back to Login"
+                  label="Back to Sign In"
                   onPress={() => router.replace('/auth/login')}
                   style={styles.backBtn}
                 />
@@ -79,7 +82,7 @@ export default function ForgotPassword() {
             ) : (
               <View>
                 <Text style={[styles.desc, { color: colors.textSecondary }]}>
-                  Enter the email address associated with your account and we'll email you a link to reset your password.
+                  Enter the email address associated with your account and we'll send you a secure link to reset your password.
                 </Text>
 
                 {/* Email Input */}
@@ -93,13 +96,13 @@ export default function ForgotPassword() {
                         style={[
                           styles.input,
                           {
-                            color: colors.inputText,
-                            borderColor: errors.email ? colors.danger : colors.inputBorder,
-                            backgroundColor: colors.inputBackground,
+                            color: isDark ? '#F8FAFC' : '#0F172A',
+                            borderColor: errors.email ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                           },
                         ]}
                         placeholder="e.g. yourname@example.com"
-                        placeholderTextColor={colors.inputPlaceholder}
+                        placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                         onBlur={onBlur}
                         onChangeText={onChange}
                         value={value}
@@ -117,7 +120,7 @@ export default function ForgotPassword() {
 
                 {/* Submit */}
                 <Button
-                  label="Send Instructions"
+                  label="Send Reset Instructions"
                   onPress={handleSubmit(onSubmit)}
                   loading={loading}
                   style={styles.submitBtn}
@@ -155,15 +158,15 @@ const styles = StyleSheet.create({
   card: {
     padding: Spacing.four,
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: 18,
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     marginBottom: Spacing.three,
   },
   desc: {
-    fontSize: 14,
+    fontSize: 13.5,
     lineHeight: 20,
     marginBottom: Spacing.four,
   },
@@ -171,19 +174,19 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.four,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '600',
     marginBottom: Spacing.one * 1.5,
   },
   input: {
     borderWidth: 1.5,
     borderRadius: 10,
-    paddingVertical: Spacing.two * 1.5,
+    paddingVertical: Spacing.two * 1.4,
     paddingHorizontal: Spacing.three,
-    fontSize: 15,
+    fontSize: 14.5,
   },
   errorText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '500',
     marginTop: Spacing.one,
   },
@@ -196,24 +199,28 @@ const styles = StyleSheet.create({
     padding: Spacing.two,
   },
   cancelText: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '600',
   },
   successContainer: {
     alignItems: 'center',
     paddingVertical: Spacing.three,
   },
-  successEmoji: {
-    fontSize: 54,
+  iconWrapper: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: Spacing.three,
   },
   successTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '800',
     marginBottom: Spacing.two,
   },
   successDesc: {
-    fontSize: 14,
+    fontSize: 13.5,
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: Spacing.four,

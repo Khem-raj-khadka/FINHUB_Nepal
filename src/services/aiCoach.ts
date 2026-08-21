@@ -174,7 +174,7 @@ ${JSON.stringify(financialContext, null, 2)}`;
     let responseText = `You have ${sips.length} active SIPs with a total monthly commitment of ${fmt(totalMonthlySip)}.\n\nTotal invested in SIPs: ${fmt(totalSipInvested)}.\n\n`;
 
     if (pendingSips.length > 0) {
-      responseText += `⚠️ Attention: You have ${pendingSips.length} pending/overdue SIP payments:\n` +
+      responseText += `Attention: You have ${pendingSips.length} pending/overdue SIP payments:\n` +
         pendingSips.map((s) => `- ${s.name} (${fmt(s.monthlyContribution || 0)})`).join('\n') + '\n\n';
     } else if (dueSoonSips.length > 0) {
       const next = dueSoonSips[0];

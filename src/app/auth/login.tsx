@@ -14,9 +14,10 @@ import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Eye, EyeOff } from 'lucide-react-native';
+import { Eye, EyeOff, Shield, Sparkles, AlertCircle } from 'lucide-react-native';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { Spacing } from '../../constants/theme';
+import Typography from '../../constants/Typography';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
@@ -30,7 +31,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const router = useRouter();
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
   
   const loginUser = useFinanceStore((state) => state.loginUser);
   const loginDemo = useFinanceStore((state) => state.loginDemo);
@@ -70,7 +71,7 @@ export default function Login() {
       loginDemo();
       setLoading(false);
       router.replace('/(tabs)/home');
-    }, 400);
+    }, 300);
   };
 
   return (
@@ -82,10 +83,15 @@ export default function Login() {
           
           {/* Logo Brand Header */}
           <View style={styles.brandHeader}>
-            <Text style={[styles.logoText, { color: colors.text }]}>FINHUB</Text>
-            <Text style={[styles.logoTextHighlight, { color: colors.accent }]}>NEPAL</Text>
+            <View style={[styles.brandIconWrapper, { backgroundColor: `${colors.accent}18` }]}>
+              <Shield color={colors.accent} size={32} />
+            </View>
+            <View style={styles.brandTitleRow}>
+              <Text style={[styles.logoText, { color: colors.text }]}>FINHUB</Text>
+              <Text style={[styles.logoTextHighlight, { color: colors.accent }]}>NEPAL</Text>
+            </View>
             <Text style={[styles.tagline, { color: colors.textSecondary }]}>
-              One Dashboard. Every Investment. Every Goal.
+              Unified Wealth, SIP, and Goal Intelligence
             </Text>
           </View>
 
@@ -94,7 +100,8 @@ export default function Login() {
             <Text style={[styles.loginTitle, { color: colors.text }]}>Sign In</Text>
 
             {authError && (
-              <View style={[styles.errorBox, { backgroundColor: `${colors.danger}15` }]}>
+              <View style={[styles.errorBox, { backgroundColor: `${colors.danger}15`, borderColor: colors.danger }]}>
+                <AlertCircle color={colors.danger} size={16} />
                 <Text style={[styles.errorBoxText, { color: colors.danger }]}>{authError}</Text>
               </View>
             )}
@@ -110,13 +117,14 @@ export default function Login() {
                     style={[
                       styles.input,
                       {
-                        color: colors.inputText,
-                        borderColor: errors.email ? colors.danger : colors.inputBorder,
-                        backgroundColor: colors.inputBackground,
+                        color: isDark ? '#F8FAFC' : '#0F172A',
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                        borderColor: errors.email ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
                       },
                     ]}
                     placeholder="e.g. demo@finhub.com"
-                    placeholderTextColor={colors.inputPlaceholder}
+                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
+                    selectionColor={colors.accent}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
@@ -148,13 +156,14 @@ export default function Login() {
                         styles.input,
                         styles.passwordInput,
                         {
-                          color: colors.inputText,
-                          borderColor: errors.password ? colors.danger : colors.inputBorder,
-                          backgroundColor: colors.inputBackground,
+                          color: isDark ? '#F8FAFC' : '#0F172A',
+                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                          borderColor: errors.password ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
                         },
                       ]}
                       placeholder="Enter password"
-                      placeholderTextColor={colors.inputPlaceholder}
+                      placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
+                      selectionColor={colors.accent}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
@@ -166,9 +175,9 @@ export default function Login() {
                       onPress={() => setShowPassword(!showPassword)}
                       style={styles.eyeToggleBtn}>
                       {showPassword ? (
-                        <EyeOff color={colors.textSecondary} size={20} />
+                        <EyeOff color={colors.textSecondary} size={18} />
                       ) : (
-                        <Eye color={colors.textSecondary} size={20} />
+                        <Eye color={colors.textSecondary} size={18} />
                       )}
                     </TouchableOpacity>
                   </View>
@@ -230,7 +239,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: Spacing.four,
-    maxWidth: 480,
+    maxWidth: 460,
     width: '100%',
     alignSelf: 'center',
   },
@@ -238,50 +247,66 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.four,
   },
+  brandIconWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.two,
+  },
+  brandTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   logoText: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: '800',
-    letterSpacing: 2,
+    letterSpacing: 1.5,
   },
   logoTextHighlight: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: '800',
-    letterSpacing: 2,
-    marginTop: -4,
+    letterSpacing: 1.5,
   },
   tagline: {
     fontSize: 13,
     fontWeight: '500',
-    marginTop: Spacing.two,
+    marginTop: Spacing.one,
     textAlign: 'center',
   },
   card: {
     padding: Spacing.four,
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: 18,
   },
   loginTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     marginBottom: Spacing.four,
   },
   errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
     padding: Spacing.two * 1.5,
     borderRadius: 8,
+    borderWidth: 1,
     marginBottom: Spacing.three,
   },
   errorBoxText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '600',
-    textAlign: 'center',
+    flex: 1,
   },
   inputGroup: {
     marginBottom: Spacing.three,
   },
   label: {
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '600',
-    marginBottom: Spacing.one * 1.5,
+    marginBottom: Spacing.one * 1.2,
   },
   passwordHeader: {
     flexDirection: 'row',
@@ -289,7 +314,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   forgotText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '600',
   },
   passwordWrapper: {
@@ -299,9 +324,9 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1.5,
     borderRadius: 10,
-    paddingVertical: Spacing.two * 1.5,
+    paddingVertical: Spacing.two * 1.4,
     paddingHorizontal: Spacing.three,
-    fontSize: 15,
+    fontSize: 14.5,
   },
   passwordInput: {
     paddingRight: 48,
@@ -315,7 +340,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   errorText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '500',
     marginTop: Spacing.one,
   },
@@ -332,7 +357,7 @@ const styles = StyleSheet.create({
     height: 1,
   },
   dividerText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     marginHorizontal: Spacing.three,
   },
@@ -345,10 +370,10 @@ const styles = StyleSheet.create({
     marginTop: Spacing.four,
   },
   signUpLabel: {
-    fontSize: 14,
+    fontSize: 13.5,
   },
   signUpLink: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '700',
   },
   bottomSpacer: {

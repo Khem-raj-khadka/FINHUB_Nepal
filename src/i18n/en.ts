@@ -100,7 +100,7 @@ export const en = {
   'goals.withdraw': 'Withdraw',
   'goals.addMoney': 'Add Money',
   'goals.activeGoals': 'Active Goals',
-  'goals.smartSavingsTitle': '💡 Smart Savings Recommendation',
+  'goals.smartSavingsTitle': 'Smart Savings Recommendation',
   'goals.smartSavingsDesc': 'Based on your spending this month, you could save an additional {amount} without affecting your regular savings target.',
   'goals.deleteTitle': 'Delete Goal?',
   'goals.deleteConfirm': 'Are you sure you want to delete "{name}"?\n\nThis action cannot be undone.',
@@ -115,7 +115,7 @@ export const en = {
   // AI Coach
   'ai.title': 'AI Financial Coach',
   'ai.placeholder': 'Ask your coach...',
-  'ai.disclaimer': '⚠️ FinHub AI provides financial insights and educational information. It is not professional financial or investment advice.',
+  'ai.disclaimer': 'FinHub AI provides financial insights and educational information. It is not professional financial or investment advice.',
   'ai.tapToAsk': 'Tap to ask:',
   'ai.clearHistory': 'Clear Chat History',
   'ai.clearConfirm': 'I\'ve cleared our chat history. What aspect of your financials would you like to review now?',

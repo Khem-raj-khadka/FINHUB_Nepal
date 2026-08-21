@@ -6,21 +6,21 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ShieldCheck, Info } from 'lucide-react-native';
+import { ShieldCheck, Info, Building2, Smartphone } from 'lucide-react-native';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { Spacing } from '../../constants/theme';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+import FeedbackModal, { FeedbackType } from '../../components/ui/FeedbackModal';
 import { SUPPORTED_PROVIDERS } from '../../services/mockData';
 import { AccountType, ProviderType } from '../../types';
 
 export default function ConnectAccount() {
   const router = useRouter();
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
 
   // Zustand
   const { addAccount } = useFinanceStore();
@@ -29,6 +29,19 @@ export default function ConnectAccount() {
   const [selectedProvider, setSelectedProvider] = useState<typeof SUPPORTED_PROVIDERS[0] | null>(null);
   const [selectedAccountType, setSelectedAccountType] = useState<AccountType>('Savings');
   const [loading, setLoading] = useState(false);
+
+  // Feedback Modal
+  const [feedbackState, setFeedbackState] = useState<{
+    visible: boolean;
+    type: FeedbackType;
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
 
   const handleSelectProvider = (prov: typeof SUPPORTED_PROVIDERS[0]) => {
     setSelectedProvider(prov);
@@ -55,23 +68,32 @@ export default function ConnectAccount() {
         randomBalance
       );
 
-      Alert.alert(
-        'Connection Successful',
-        `Successfully linked ${selectedProvider.name} (${selectedAccountType})!`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              router.replace('/(tabs)/accounts');
-            },
-          },
-        ]
-      );
-    }, 800);
+      setFeedbackState({
+        visible: true,
+        type: 'success',
+        title: 'Account Linked',
+        message: `Successfully connected ${selectedProvider.name} (${selectedAccountType})!`,
+      });
+    }, 600);
+  };
+
+  const handleFeedbackClose = () => {
+    setFeedbackState((s) => ({ ...s, visible: false }));
+    router.replace('/(tabs)/accounts');
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      
+      {/* Feedback Modal */}
+      <FeedbackModal
+        visible={feedbackState.visible}
+        type={feedbackState.type}
+        title={feedbackState.title}
+        message={feedbackState.message}
+        onClose={handleFeedbackClose}
+      />
+
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
         {!selectedProvider ? (
@@ -88,7 +110,13 @@ export default function ConnectAccount() {
                   key={prov.id}
                   onPress={() => handleSelectProvider(prov)}
                   style={[styles.providerCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
-                  <Text style={styles.providerEmoji}>{prov.icon}</Text>
+                  <View style={[styles.providerIconCircle, { backgroundColor: `${colors.accent}15` }]}>
+                    {prov.type === 'bank' ? (
+                      <Building2 size={24} color={colors.accent} />
+                    ) : (
+                      <Smartphone size={24} color={colors.success} />
+                    )}
+                  </View>
                   <Text numberOfLines={1} style={[styles.providerName, { color: colors.text }]}>
                     {prov.name}
                   </Text>
@@ -166,7 +194,10 @@ export default function ConnectAccount() {
 
             {/* Security Guarantee Box */}
             <Card style={[styles.securityGuarantee, { borderColor: colors.border, backgroundColor: colors.card }]}>
-              <Text style={[styles.secTitle, { color: colors.text }]}>🛡️ Safe & Encrypted</Text>
+              <View style={styles.secHeaderRow}>
+                <ShieldCheck color={colors.success} size={18} />
+                <Text style={[styles.secTitle, { color: colors.text }]}>Safe & Encrypted</Text>
+              </View>
               <Text style={[styles.secDesc, { color: colors.textSecondary }]}>
                 By clicking below, you consent to link this provider using simulated read-only credentials. No real financial credentials will be altered.
               </Text>
@@ -233,8 +264,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  providerEmoji: {
-    fontSize: 32,
+  providerIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: Spacing.two,
   },
   providerName: {
@@ -321,10 +356,15 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     marginVertical: Spacing.three,
   },
+  secHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
   secTitle: {
     fontSize: 13,
     fontWeight: '700',
-    marginBottom: 4,
   },
   secDesc: {
     fontSize: 11,

@@ -525,13 +525,13 @@ export const INITIAL_FINANCIAL_SCORE: FinancialScore = {
 
 // Available Banks / Wallets for linking flow
 export const SUPPORTED_PROVIDERS = [
-  { id: 'prov-nabil', name: 'Nabil Bank', type: 'bank', icon: '🏦' },
-  { id: 'prov-nmb', name: 'NMB Bank', type: 'bank', icon: '🏦' },
-  { id: 'prov-nic', name: 'NIC Asia Bank', type: 'bank', icon: '🏦' },
-  { id: 'prov-gib', name: 'Global IME Bank', type: 'bank', icon: '🏦' },
-  { id: 'prov-siddhartha', name: 'Siddhartha Bank', type: 'bank', icon: '🏦' },
-  { id: 'prov-esewa', name: 'eSewa', type: 'wallet', icon: '📱' },
-  { id: 'prov-khalti', name: 'Khalti', type: 'wallet', icon: '📱' },
+  { id: 'prov-nabil', name: 'Nabil Bank', type: 'bank', icon: 'Building2' },
+  { id: 'prov-nmb', name: 'NMB Bank', type: 'bank', icon: 'Building2' },
+  { id: 'prov-nic', name: 'NIC Asia Bank', type: 'bank', icon: 'Building2' },
+  { id: 'prov-gib', name: 'Global IME Bank', type: 'bank', icon: 'Building2' },
+  { id: 'prov-siddhartha', name: 'Siddhartha Bank', type: 'bank', icon: 'Building2' },
+  { id: 'prov-esewa', name: 'eSewa', type: 'wallet', icon: 'Smartphone' },
+  { id: 'prov-khalti', name: 'Khalti', type: 'wallet', icon: 'Smartphone' },
 ];
 
 // Removed NEPSE stock tickers

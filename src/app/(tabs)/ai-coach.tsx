@@ -12,16 +12,17 @@ import {
   Platform,
   useWindowDimensions,
 } from 'react-native';
-import { Send, Trash2, Sparkles, BrainCircuit } from 'lucide-react-native';
+import { Send, Trash2, Sparkles, BrainCircuit, Bot, User } from 'lucide-react-native';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { Spacing } from '../../constants/theme';
 import Typography from '../../constants/Typography';
 import Card from '../../components/ui/Card';
+import FeedbackModal from '../../components/ui/FeedbackModal';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { useTranslation } from '../../i18n';
 
 export default function AICoach() {
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
   const { t, language } = useTranslation();
   const { width: windowWidth } = useWindowDimensions();
   const isWideScreen = windowWidth >= 768;
@@ -30,6 +31,7 @@ export default function AICoach() {
   const { chatMessages, sendChatMessage, clearChat, isChatLoading } = useFinanceStore();
 
   const [inputVal, setInputVal] = useState('');
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const suggestedPrompts = language === 'ne'
@@ -65,9 +67,27 @@ export default function AICoach() {
     sendChatMessage(prompt);
   };
 
+  const handleConfirmClear = () => {
+    clearChat();
+    setShowClearConfirm(false);
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       
+      {/* Clear Chat Confirmation Modal */}
+      <FeedbackModal
+        visible={showClearConfirm}
+        type="confirm"
+        title="Clear Conversation?"
+        message="Are you sure you want to reset this chat session with AI Coach?"
+        confirmLabel="Clear"
+        cancelLabel="Cancel"
+        isDestructive={true}
+        onConfirm={handleConfirmClear}
+        onCancel={() => setShowClearConfirm(false)}
+      />
+
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
         <View style={styles.headerInner}>
@@ -76,8 +96,10 @@ export default function AICoach() {
             <Text style={[styles.headerTitle, { color: colors.text }]}>{t('ai.title')}</Text>
           </View>
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Clear Chat"
             activeOpacity={0.7}
-            onPress={clearChat}
+            onPress={() => setShowClearConfirm(true)}
             style={[styles.clearBtn, { backgroundColor: colors.backgroundElement }]}>
             <Trash2 color={colors.danger} size={15} />
           </TouchableOpacity>
@@ -144,7 +166,11 @@ export default function AICoach() {
                       isAI ? styles.rowLeft : styles.rowRight,
                     ]}>
                     
-                    {isAI && <Text style={styles.aiAvatarEmoji}>🤖</Text>}
+                    {isAI ? (
+                      <View style={[styles.avatarWrap, { backgroundColor: `${colors.accent}18` }]}>
+                        <Bot size={16} color={colors.accent} />
+                      </View>
+                    ) : null}
 
                     <View
                       style={[
@@ -161,6 +187,12 @@ export default function AICoach() {
                         {msg.text}
                       </Text>
                     </View>
+
+                    {!isAI ? (
+                      <View style={[styles.avatarWrap, { backgroundColor: colors.text }]}>
+                        <User size={14} color={colors.background} />
+                      </View>
+                    ) : null}
                   </View>
                 );
               })}
@@ -168,7 +200,9 @@ export default function AICoach() {
               {/* Simulated AI Typing indicator */}
               {isChatLoading && (
                 <View style={[styles.messageRow, styles.rowLeft]}>
-                  <Text style={styles.aiAvatarEmoji}>🤖</Text>
+                  <View style={[styles.avatarWrap, { backgroundColor: `${colors.accent}18` }]}>
+                    <Bot size={16} color={colors.accent} />
+                  </View>
                   <View style={[styles.messageBubble, styles.bubbleLeft, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <ActivityIndicator size="small" color={colors.accent} />
                   </View>
@@ -185,13 +219,13 @@ export default function AICoach() {
               style={[
                 styles.input,
                 {
-                  color: colors.inputText,
-                  borderColor: colors.inputBorder,
-                  backgroundColor: colors.inputBackground,
+                  color: isDark ? '#F8FAFC' : '#0F172A',
+                  borderColor: isDark ? '#334155' : '#CBD5E1',
+                  backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                 },
               ]}
               placeholder={t('ai.placeholder')}
-              placeholderTextColor={colors.inputPlaceholder}
+              placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
               value={inputVal}
               onChangeText={setInputVal}
               onSubmitEditing={handleSend}
@@ -328,6 +362,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     marginVertical: 4,
+    gap: 8,
   },
   rowLeft: {
     justifyContent: 'flex-start',
@@ -338,9 +373,12 @@ const styles = StyleSheet.create({
     paddingLeft: Spacing.six,
     marginLeft: 'auto',
   },
-  aiAvatarEmoji: {
-    fontSize: 20,
-    marginRight: Spacing.two,
+  avatarWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 2,
   },
   messageBubble: {
