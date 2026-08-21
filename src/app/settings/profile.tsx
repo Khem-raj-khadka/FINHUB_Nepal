@@ -10,7 +10,7 @@ import {
   Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ShieldCheck, Moon, Globe, ChevronDown, ChevronUp, Award, Info, AlertTriangle } from 'lucide-react-native';
+import { ShieldCheck, Moon, Globe, ChevronDown, ChevronUp, Award, Info, AlertTriangle, User } from 'lucide-react-native';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { Spacing } from '../../constants/theme';
 import Typography from '../../constants/Typography';
