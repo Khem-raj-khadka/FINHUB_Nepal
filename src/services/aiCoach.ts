@@ -90,7 +90,7 @@ CRITICAL RULES:
 USER FINANCIAL SNAPSHOT:
 ${JSON.stringify(financialContext, null, 2)}`;
 
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
       const response = await fetch(endpoint, {
         method: 'POST',
