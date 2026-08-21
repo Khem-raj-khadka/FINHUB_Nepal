@@ -5,7 +5,6 @@ import {
   StyleSheet,
   SafeAreaView,
   TextInput,
-  useColorScheme,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
@@ -15,8 +14,10 @@ import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { Eye, EyeOff, Shield } from 'lucide-react-native';
 import { useFinanceStore } from '../../store/useFinanceStore';
-import { Colors, Spacing } from '../../constants/theme';
+import { Spacing } from '../../constants/theme';
+import { useAppTheme } from '../../hooks/useAppTheme';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 
@@ -36,12 +37,13 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function Register() {
   const router = useRouter();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' || !scheme ? 'light' : scheme];
+  const { colors, isDark } = useAppTheme();
 
   const signUp = useFinanceStore((state) => state.signUp);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     control,
@@ -61,31 +63,34 @@ export default function Register() {
     setLoading(true);
     setError(null);
     try {
-      setTimeout(() => {
-        signUp(data.fullName, data.email);
-        setLoading(false);
-        router.replace('/(tabs)/home');
-      }, 1000);
-    } catch (err) {
+      await signUp(data.fullName, data.email, data.password);
       setLoading(false);
-      setError('An error occurred during account creation.');
+      router.replace('/(tabs)/home');
+    } catch (err: any) {
+      setLoading(false);
+      setError(err.message || 'An error occurred during account creation.');
     }
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {/* Header */}
           <View style={styles.brandHeader}>
-            <Text style={[styles.logoText, { color: colors.text }]}>FINHUB</Text>
-            <Text style={[styles.logoTextHighlight, { color: colors.accent }]}>NEPAL</Text>
+            <View style={[styles.brandIconWrapper, { backgroundColor: `${colors.accent}18` }]}>
+              <Shield color={colors.accent} size={30} />
+            </View>
+            <View style={styles.brandTitleRow}>
+              <Text style={[styles.logoText, { color: colors.text }]}>FINHUB</Text>
+              <Text style={[styles.logoTextHighlight, { color: colors.accent }]}>NEPAL</Text>
+            </View>
           </View>
 
           {/* Form Card */}
-          <Card style={styles.card}>
+          <Card style={[styles.card, { borderColor: colors.border, backgroundColor: colors.card }]}>
             <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
 
             {error && (
@@ -105,13 +110,13 @@ export default function Register() {
                     style={[
                       styles.input,
                       {
-                        color: colors.text,
-                        borderColor: errors.fullName ? colors.danger : colors.border,
-                        backgroundColor: colors.background,
+                        color: isDark ? '#F8FAFC' : '#0F172A',
+                        borderColor: errors.fullName ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                       },
                     ]}
                     placeholder="e.g. Khem Raj"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
@@ -136,13 +141,13 @@ export default function Register() {
                     style={[
                       styles.input,
                       {
-                        color: colors.text,
-                        borderColor: errors.email ? colors.danger : colors.border,
-                        backgroundColor: colors.background,
+                        color: isDark ? '#F8FAFC' : '#0F172A',
+                        borderColor: errors.email ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                       },
                     ]}
                     placeholder="e.g. yourname@example.com"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
@@ -158,29 +163,43 @@ export default function Register() {
               )}
             </View>
 
-            {/* Password Input */}
+            {/* Password Input with Eye Visibility Toggle */}
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.textSecondary }]}>Password</Text>
               <Controller
                 control={control}
                 name="password"
                 render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    style={[
-                      styles.input,
-                      {
-                        color: colors.text,
-                        borderColor: errors.password ? colors.danger : colors.border,
-                        backgroundColor: colors.background,
-                      },
-                    ]}
-                    placeholder="Minimum 6 characters"
-                    placeholderTextColor={colors.textSecondary}
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    value={value}
-                    secureTextEntry
-                  />
+                  <View style={styles.passwordWrapper}>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        styles.passwordInput,
+                        {
+                          color: isDark ? '#F8FAFC' : '#0F172A',
+                          borderColor: errors.password ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
+                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                        },
+                      ]}
+                      placeholder="Minimum 6 characters"
+                      placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
+                      onBlur={onBlur}
+                      onChangeText={onChange}
+                      value={value}
+                      secureTextEntry={!showPassword}
+                    />
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                      onPress={() => setShowPassword(!showPassword)}
+                      style={styles.eyeToggleBtn}>
+                      {showPassword ? (
+                        <EyeOff color={colors.textSecondary} size={18} />
+                      ) : (
+                        <Eye color={colors.textSecondary} size={18} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
                 )}
               />
               {errors.password && (
@@ -190,29 +209,43 @@ export default function Register() {
               )}
             </View>
 
-            {/* Confirm Password Input */}
+            {/* Confirm Password Input with Eye Visibility Toggle */}
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.textSecondary }]}>Confirm Password</Text>
               <Controller
                 control={control}
                 name="confirmPassword"
                 render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    style={[
-                      styles.input,
-                      {
-                        color: colors.text,
-                        borderColor: errors.confirmPassword ? colors.danger : colors.border,
-                        backgroundColor: colors.background,
-                      },
-                    ]}
-                    placeholder="Re-enter password"
-                    placeholderTextColor={colors.textSecondary}
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    value={value}
-                    secureTextEntry
-                  />
+                  <View style={styles.passwordWrapper}>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        styles.passwordInput,
+                        {
+                          color: isDark ? '#F8FAFC' : '#0F172A',
+                          borderColor: errors.confirmPassword ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
+                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                        },
+                      ]}
+                      placeholder="Re-enter password"
+                      placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
+                      onBlur={onBlur}
+                      onChangeText={onChange}
+                      value={value}
+                      secureTextEntry={!showConfirmPassword}
+                    />
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={showConfirmPassword ? 'Hide password' : 'Show password'}
+                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                      style={styles.eyeToggleBtn}>
+                      {showConfirmPassword ? (
+                        <EyeOff color={colors.textSecondary} size={18} />
+                      ) : (
+                        <Eye color={colors.textSecondary} size={18} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
                 )}
               />
               {errors.confirmPassword && (
@@ -224,7 +257,7 @@ export default function Register() {
 
             {/* Submit */}
             <Button
-              label="Sign Up"
+              label="Create Account"
               onPress={handleSubmit(onSubmit)}
               loading={loading}
               style={styles.signUpBtn}
@@ -240,6 +273,8 @@ export default function Register() {
               <Text style={[styles.footerLink, { color: colors.accent }]}>Sign In</Text>
             </TouchableOpacity>
           </View>
+
+          <View style={styles.bottomSpacer} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -257,27 +292,44 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: Spacing.four,
+    maxWidth: 480,
+    width: '100%',
+    alignSelf: 'center',
   },
   brandHeader: {
     alignItems: 'center',
     marginBottom: Spacing.four,
   },
+  brandIconWrapper: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.two,
+  },
+  brandTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   logoText: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
-    letterSpacing: 2,
+    letterSpacing: 1.5,
   },
   logoTextHighlight: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
-    letterSpacing: 2,
-    marginTop: -4,
+    letterSpacing: 1.5,
   },
   card: {
     padding: Spacing.four,
+    borderWidth: 1,
+    borderRadius: 18,
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     marginBottom: Spacing.four,
   },
@@ -295,19 +347,34 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.three,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    marginBottom: Spacing.one * 1.5,
+    marginBottom: Spacing.one * 1.2,
+  },
+  passwordWrapper: {
+    position: 'relative',
+    justifyContent: 'center',
   },
   input: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: 10,
-    paddingVertical: Spacing.two * 1.5,
+    paddingVertical: Spacing.two * 1.4,
     paddingHorizontal: Spacing.three,
-    fontSize: 15,
+    fontSize: 14.5,
+  },
+  passwordInput: {
+    paddingRight: 48,
+  },
+  eyeToggleBtn: {
+    position: 'absolute',
+    right: 12,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 4,
   },
   errorText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '500',
     marginTop: Spacing.one,
   },
@@ -320,10 +387,13 @@ const styles = StyleSheet.create({
     marginTop: Spacing.four,
   },
   footerText: {
-    fontSize: 14,
+    fontSize: 13.5,
   },
   footerLink: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '700',
+  },
+  bottomSpacer: {
+    height: Spacing.four,
   },
 });

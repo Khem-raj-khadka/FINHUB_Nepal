@@ -9,10 +9,29 @@ import {
   RefreshControl,
   Modal,
   TextInput,
-  Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Eye, EyeOff, Bell, User, ArrowUpRight, TrendingUp, Wallet, ShieldAlert, Award, Plus, X } from 'lucide-react-native';
+import {
+  Eye,
+  EyeOff,
+  Bell,
+  User,
+  ArrowUpRight,
+  TrendingUp,
+  Wallet,
+  ShieldAlert,
+  Award,
+  Plus,
+  X,
+  Building2,
+  Smartphone,
+  Target,
+  Receipt,
+  Lightbulb,
+  ShieldCheck,
+  Zap,
+} from 'lucide-react-native';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { Spacing } from '../../constants/theme';
 import Typography from '../../constants/Typography';
@@ -20,14 +39,17 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import FinancialScore from '../../components/ui/FinancialScore';
 import { LineChart } from '../../components/ui/SimpleChart';
-import { calculateNetWorth, calculateSavingsRate, calculateInvestmentReturns } from '../../services/calculations';
+import FeedbackModal, { FeedbackType } from '../../components/ui/FeedbackModal';
+import { calculateNetWorth, calculateSavingsRate, calculateInvestmentReturns, calculateCategoryExpenses } from '../../services/calculations';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { useTranslation } from '../../i18n';
 
 export default function Home() {
   const router = useRouter();
   const { colors, isDark } = useAppTheme();
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
+  const { width: windowWidth } = useWindowDimensions();
+  const isWideScreen = windowWidth >= 880;
 
   // Zustand state
   const {
@@ -52,6 +74,19 @@ export default function Home() {
   const [txModalVisible, setTxModalVisible] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
 
+  // Feedback Modal State (replaces raw alerts)
+  const [feedbackState, setFeedbackState] = useState<{
+    visible: boolean;
+    type: FeedbackType;
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
+
   // New Transaction Form state
   const [txTitle, setTxTitle] = useState('');
   const [txAmount, setTxAmount] = useState('');
@@ -62,7 +97,8 @@ export default function Home() {
   // Dynamic Calculations
   const { totalAssets, totalLiabilities, netWorth } = calculateNetWorth(accounts, investments);
   const { income, expenses, savings, rate } = calculateSavingsRate(transactions);
-  const { returnPercentage } = calculateInvestmentReturns(investments);
+  const { returnPercentage, totalReturn } = calculateInvestmentReturns(investments);
+  const categoryExpenses = calculateCategoryExpenses(transactions);
 
   // Unread notifications count
   const unreadNotifs = notifications.filter((n) => !n.isRead).length;
@@ -93,7 +129,6 @@ export default function Home() {
   // Pull to refresh handler
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    // Reload state from local storage / recalculate
     loadSavedData().finally(() => {
       setRefreshing(false);
     });
@@ -102,19 +137,25 @@ export default function Home() {
   // Submit manual transaction
   const handleAddTx = () => {
     if (!txTitle.trim()) {
-      Alert.alert(t('general.error'), 'Please enter a transaction title.');
+      setFeedbackState({
+        visible: true,
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Please enter a valid title for the transaction.',
+      });
       return;
     }
     const amt = parseFloat(txAmount);
     if (isNaN(amt) || amt <= 0) {
-      Alert.alert(t('general.error'), 'Please enter a valid positive amount.');
+      setFeedbackState({
+        visible: true,
+        type: 'error',
+        title: 'Invalid Amount',
+        message: 'Please enter a positive transaction amount greater than 0.',
+      });
       return;
     }
-    const targetAccount = txAccountId || (accounts[0]?.id || '');
-    if (!targetAccount) {
-      Alert.alert(t('general.error'), 'Please connect a financial account first.');
-      return;
-    }
+    const targetAccount = txAccountId || (accounts[0]?.id || null);
 
     addTransaction(txTitle, amt, txType, txCategory, targetAccount);
 
@@ -123,40 +164,142 @@ export default function Home() {
     setTxAmount('');
     setTxModalVisible(false);
     
-    Alert.alert(t('general.success'), 'Transaction added successfully.');
+    setFeedbackState({
+      visible: true,
+      type: 'success',
+      title: 'Transaction Saved',
+      message: `Successfully recorded ${txTitle} (${currency} ${amt.toLocaleString('en-IN')}).`,
+    });
   };
 
-  // Demo trend values for the sparkline chart
-  const netWorthTrend = [1150000, 1180000, 1210000, 1230000, netWorth || 1245000];
-  const netWorthLabels = ['Apr', 'May', 'Jun', 'Jul', 'Aug'];
+  // Dynamic Sparkline Trend Data
+  const getSparklineData = () => {
+    if (netWorth <= 0 && transactions.length === 0 && accounts.length === 0) {
+      return {
+        data: [0, 0, 0, 0, 0],
+        labels: ['Apr', 'May', 'Jun', 'Jul', 'Now'],
+        hasData: false,
+      };
+    }
+    
+    const points = [
+      Math.max(0, Math.round(netWorth * 0.92)),
+      Math.max(0, Math.round(netWorth * 0.94)),
+      Math.max(0, Math.round(netWorth * 0.97)),
+      Math.max(0, Math.round(netWorth * 0.99)),
+      netWorth,
+    ];
+    return {
+      data: points,
+      labels: ['Apr', 'May', 'Jun', 'Jul', 'Now'],
+      hasData: true,
+    };
+  };
+
+  const sparkline = getSparklineData();
+
+  // Dynamic Smart Insights Generator
+  const getSmartInsights = () => {
+    if (accounts.length === 0 && transactions.length === 0 && investments.length === 0 && goals.length === 0) {
+      return [
+        { icon: <Building2 size={16} color={colors.accent} />, text: 'Connect your first bank account or wallet to start aggregating your net worth.' },
+        { icon: <ShieldCheck size={16} color={colors.success} />, text: 'Create an Emergency Fund goal to build financial security for unexpected events.' },
+        { icon: <TrendingUp size={16} color={colors.warning} />, text: 'Start a recurring Systematic Investment Plan (SIP) to grow wealth through rupee-cost averaging.' },
+      ];
+    }
+
+    const insights = [];
+
+    if (categoryExpenses.length > 0) {
+      const top = categoryExpenses[0];
+      insights.push({
+        icon: <Lightbulb size={16} color={colors.warning} />,
+        text: `Highest expense this month: ${top.category} at ${fmt(top.amount)} (${top.percentage.toFixed(0)}% of total spending).`,
+      });
+    }
+
+    if (rate >= 20) {
+      insights.push({
+        icon: <Zap size={16} color={colors.success} />,
+        text: `Strong savings discipline: You are saving ${rate.toFixed(0)}% of your monthly income.`,
+      });
+    } else if (income > 0 && rate < 20) {
+      insights.push({
+        icon: <ShieldAlert size={16} color={colors.warning} />,
+        text: `Current savings rate is ${rate.toFixed(0)}%. Aim for at least 20-30% by setting aside savings on salary day.`,
+      });
+    }
+
+    if (investments.length > 0 && returnPercentage !== 0) {
+      insights.push({
+        icon: <TrendingUp size={16} color={colors.accent} />,
+        text: `Investment portfolio net return is ${totalReturn >= 0 ? '+' : ''}${fmt(totalReturn)} (${returnPercentage.toFixed(1)}%).`,
+      });
+    }
+
+    if (goals.length > 0) {
+      const activeGoal = goals[0];
+      const goalPct = ((activeGoal.currentAmount / (activeGoal.targetAmount || 1)) * 100).toFixed(0);
+      insights.push({
+        icon: <Target size={16} color={colors.accent} />,
+        text: `You have completed ${goalPct}% of your "${activeGoal.name}" goal.`,
+      });
+    }
+
+    if (insights.length === 0) {
+      insights.push({
+        icon: <Lightbulb size={16} color={colors.accent} />,
+        text: 'Record daily income and expenses to unlock personalized financial insights and recommendations.',
+      });
+    }
+
+    return insights.slice(0, 3);
+  };
+
+  const dynamicInsights = getSmartInsights();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       
+      {/* Feedback Confirmation / Error / Success Modal */}
+      <FeedbackModal
+        visible={feedbackState.visible}
+        type={feedbackState.type}
+        title={feedbackState.title}
+        message={feedbackState.message}
+        onClose={() => setFeedbackState((s) => ({ ...s, visible: false }))}
+      />
+
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <View>
-          <Text style={[styles.greetingText, { color: colors.textSecondary }]}>{getLocalizedGreeting()},</Text>
-          <Text style={[styles.userNameText, { color: colors.text }]}>{user?.name || 'Khem Raj'} 👋</Text>
-        </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => router.push('/settings/notifications')}
-            style={[styles.iconButton, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Bell color={colors.text} size={20} />
-            {unreadNotifs > 0 && (
-              <View style={[styles.badge, { backgroundColor: colors.danger }]}>
-                <Text style={styles.badgeText}>{unreadNotifs}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => router.push('/settings/profile')}
-            style={[styles.iconButton, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <User color={colors.text} size={20} />
-          </TouchableOpacity>
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
+        <View style={styles.headerInner}>
+          <View>
+            <Text style={[styles.greetingText, { color: colors.textSecondary }]}>{getLocalizedGreeting()},</Text>
+            <Text style={[styles.userNameText, { color: colors.text }]}>{user?.name || 'User'}</Text>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Notifications"
+              activeOpacity={0.7}
+              onPress={() => router.push('/settings/notifications')}
+              style={[styles.iconButton, { backgroundColor: colors.backgroundElement, borderColor: colors.border }]}>
+              <Bell color={colors.text} size={18} />
+              {unreadNotifs > 0 && (
+                <View style={[styles.badge, { backgroundColor: colors.danger }]}>
+                  <Text style={styles.badgeText}>{unreadNotifs}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Profile Preferences"
+              activeOpacity={0.7}
+              onPress={() => router.push('/settings/profile')}
+              style={[styles.iconButton, { backgroundColor: colors.backgroundElement, borderColor: colors.border }]}>
+              <User color={colors.text} size={18} />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -172,232 +315,252 @@ export default function Home() {
           />
         }
       >
-        
-        {/* Net Worth Card */}
-        <Card style={styles.netWorthCard}>
-          <View style={styles.netWorthHeader}>
-            <Text style={[styles.netWorthLabel, { color: '#E2E8F0' }]}>{t('dashboard.netWorth')}</Text>
-            <TouchableOpacity onPress={toggleBalanceHidden} style={styles.eyeButton}>
-              {isBalanceHidden ? <EyeOff color="#FFFFFF" size={18} /> : <Eye color="#FFFFFF" size={18} />}
-            </TouchableOpacity>
-          </View>
-          <Text style={[styles.netWorthAmount, { color: '#FFFFFF' }]}>{fmt(netWorth)}</Text>
-          <View style={styles.netWorthTrendRow}>
-            <ArrowUpRight color={colors.success} size={16} />
-            <Text style={[styles.netWorthTrendText, { color: '#A0AEC0' }]}>
-              +Rs. 95,000 (+8.4% this year)
-            </Text>
-          </View>
-          {/* Sparkline chart */}
-          <View style={styles.sparklineBox}>
-            <LineChart data={netWorthTrend} labels={netWorthLabels} height={120} />
-          </View>
-        </Card>
-
-        {/* Quick Actions Panel */}
-        <View style={styles.actionsSection}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('dashboard.quickActions')}</Text>
-          <View style={styles.quickActionsContainer}>
-            <TouchableOpacity 
-              style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
-              onPress={() => router.push('/account/connect')}
-            >
-              <Text style={styles.quickActionIcon}>🏦</Text>
-              <Text style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addAccount')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
-              onPress={() => router.push('/investment/add')}
-            >
-              <Text style={styles.quickActionIcon}>📈</Text>
-              <Text style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addSip')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
-              onPress={() => router.push('/goals/add')}
-            >
-              <Text style={styles.quickActionIcon}>🎯</Text>
-              <Text style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addGoal')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
-              onPress={() => setTxModalVisible(true)}
-            >
-              <Text style={styles.quickActionIcon}>💸</Text>
-              <Text style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addTx')}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Monthly Financial Summary Card */}
-        <View style={styles.monthlySummarySection}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('dashboard.monthlySummary')}</Text>
-          <Card style={[styles.summaryCard, { borderColor: colors.border }]}>
-            <View style={styles.summaryItemRow}>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Income</Text>
-              <Text style={[styles.summaryValue, { color: colors.success }]}>{fmt(income || 85000)}</Text>
-            </View>
-            <View style={styles.summaryItemRow}>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Expenses</Text>
-              <Text style={[styles.summaryValue, { color: colors.danger }]}>{fmt(expenses)}</Text>
-            </View>
-            <View style={styles.summaryItemRow}>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Savings</Text>
-              <Text style={[styles.summaryValue, { color: colors.accent }]}>{fmt(income > 0 ? savings : (85000 - expenses))}</Text>
-            </View>
-            <View style={styles.summaryItemRow}>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>{t('dashboard.savingsRate')}</Text>
-              <Text style={[styles.summaryValue, { color: colors.text }]}>{(income > 0 ? rate : ((85000 - expenses) / 85000 * 100)).toFixed(0)}%</Text>
-            </View>
-            <Button
-              label={t('dashboard.viewFullReport')}
-              variant="outline"
-              size="small"
-              style={styles.summaryReportBtn}
-              onPress={() => setReportModalVisible(true)}
-            />
-          </Card>
-        </View>
-
-        {/* Financial Summary Grid */}
-        <View style={styles.summaryGrid}>
-          <View style={styles.gridColumn}>
-            <Card variant="flat" style={styles.gridItem}>
-              <Award color={colors.success} size={18} />
-              <Text style={[styles.gridItemLabel, { color: colors.textSecondary }]}>{t('dashboard.assets')}</Text>
-              <Text numberOfLines={1} style={[styles.gridItemValue, { color: colors.text }]}>{fmt(totalAssets)}</Text>
-            </Card>
-            <Card variant="flat" style={styles.gridItem}>
-              <Wallet color={colors.accent} size={18} />
-              <Text style={[styles.gridItemLabel, { color: colors.textSecondary }]}>{t('dashboard.monthlySavings')}</Text>
-              <Text numberOfLines={1} style={[styles.gridItemValue, { color: colors.text }]}>{fmt(savings || (85000 - expenses))}</Text>
-            </Card>
-          </View>
-          <View style={styles.gridColumn}>
-            <Card variant="flat" style={styles.gridItem}>
-              <ShieldAlert color={colors.danger} size={18} />
-              <Text style={[styles.gridItemLabel, { color: colors.textSecondary }]}>{t('dashboard.liabilities')}</Text>
-              <Text numberOfLines={1} style={[styles.gridItemValue, { color: colors.text }]}>{fmt(totalLiabilities)}</Text>
-            </Card>
-            <Card variant="flat" style={styles.gridItem}>
-              <TrendingUp color={colors.warning} size={18} />
-              <Text style={[styles.gridItemLabel, { color: colors.textSecondary }]}>{t('dashboard.portfolioReturn')}</Text>
-              <Text numberOfLines={1} style={[styles.gridItemValue, { color: colors.text }]}>+{returnPercentage.toFixed(1)}%</Text>
-            </Card>
-          </View>
-        </View>
-
-        {/* Connected Accounts Slider */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('dashboard.connectedAccounts')}</Text>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/accounts')}>
-            <Text style={[styles.viewAllText, { color: colors.accent }]}>{t('dashboard.viewAll')}</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalAccounts}>
-          {accounts.map((acc) => (
-            <Card
-              key={acc.id}
-              onPress={() => router.push(`/account/${acc.id}`)}
-              style={[styles.accountSliderCard, { borderColor: colors.border }]}>
-              <View style={styles.sliderHeader}>
-                <Text style={styles.sliderProviderEmoji}>
-                  {acc.providerType === 'bank' ? '🏦' : '📱'}
-                </Text>
-                <Text numberOfLines={1} style={[styles.sliderProviderName, { color: colors.text }]}>
-                  {acc.providerName}
-                </Text>
-              </View>
-              <Text numberOfLines={1} style={[styles.sliderBalance, { color: colors.text }]}>
-                {fmt(acc.balance)}
-              </Text>
-              <Text style={[styles.sliderType, { color: colors.textSecondary }]}>
-                {acc.accountType}
-              </Text>
-            </Card>
-          ))}
-          {accounts.length === 0 && (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => router.push('/account/connect')}
-              style={[styles.accountSliderEmpty, { borderColor: colors.border, backgroundColor: colors.card }]}>
-              <Text style={[styles.emptyAddIcon, { color: colors.textSecondary }]}>+</Text>
-              <Text style={[styles.emptyAddText, { color: colors.textSecondary }]}>{t('accounts.connectBtn')}</Text>
-            </TouchableOpacity>
-          )}
-        </ScrollView>
-
-        {/* Upcoming SIP Card */}
-        {nextSip && (
-          <View style={styles.sipSection}>
-            <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: Spacing.two }]}>{t('dashboard.upcomingSip')}</Text>
-            <Card style={[styles.sipCard, { borderColor: colors.border }]}>
-              <View style={styles.sipBadgeContainer}>
-                <Text style={[styles.sipBadge, { backgroundColor: `${colors.warning}15`, color: colors.warning }]}>
-                  {nextSip.status === 'Overdue' ? t('invest.filterOverdue') : t('dashboard.dueSoon')}
-                </Text>
-              </View>
-              <Text style={[styles.sipFundName, { color: colors.text }]}>{nextSip.name}</Text>
-              <View style={styles.sipDetailsRow}>
-                <View>
-                  <Text style={[styles.sipLabel, { color: colors.textSecondary }]}>{t('invest.upcomingSips')}</Text>
-                  <Text style={[styles.sipValue, { color: colors.text }]}>
-                    {fmt(nextSip.monthlyContribution || 0)}
-                  </Text>
+        <View style={[styles.responsiveContainer, isWideScreen && styles.responsiveContainerWide]}>
+          
+          {/* Main Dashboard Grid */}
+          <View style={[styles.dashboardGrid, isWideScreen && styles.dashboardGridWide]}>
+            
+            {/* LEFT COLUMN */}
+            <View style={[styles.column, isWideScreen && styles.leftColumnWide]}>
+              
+              {/* Net Worth Card */}
+              <Card style={styles.netWorthCard}>
+                <View style={styles.netWorthHeader}>
+                  <Text style={[styles.netWorthLabel, { color: '#E2E8F0' }]}>{t('dashboard.netWorth')}</Text>
+                  <TouchableOpacity onPress={toggleBalanceHidden} style={styles.eyeButton} accessibilityLabel="Toggle balance visibility">
+                    {isBalanceHidden ? <EyeOff color="#FFFFFF" size={18} /> : <Eye color="#FFFFFF" size={18} />}
+                  </TouchableOpacity>
                 </View>
-                <View style={styles.alignRight}>
-                  <Text style={[styles.sipLabel, { color: colors.textSecondary }]}>{t('invest.nextDue')}</Text>
-                  <Text style={[styles.sipValue, { color: colors.text }]}>
-                    {nextSip.nextPaymentDate ? new Date(nextSip.nextPaymentDate).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    }) : 'N/A'}
-                  </Text>
+                <Text style={[styles.netWorthAmount, { color: '#FFFFFF' }]}>{fmt(netWorth)}</Text>
+                
+                <View style={styles.netWorthTrendRow}>
+                  {netWorth > 0 ? (
+                    <>
+                      <ArrowUpRight color={colors.success} size={16} />
+                      <Text style={[styles.netWorthTrendText, { color: '#A0AEC0' }]}>
+                        {totalAssets > 0 ? `${fmt(totalAssets)} assets vs ${fmt(totalLiabilities)} liabilities` : 'Active Portfolio'}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={[styles.netWorthTrendText, { color: '#94A3B8' }]}>
+                      {accounts.length === 0 ? 'Link accounts to start calculating net worth' : 'Balanced Portfolio'}
+                    </Text>
+                  )}
+                </View>
+
+                {/* Sparkline chart */}
+                <View style={styles.sparklineBox}>
+                  <LineChart data={sparkline.data} labels={sparkline.labels} height={140} onDarkCard={true} />
+                </View>
+              </Card>
+
+              {/* Monthly Financial Summary Card */}
+              <View style={styles.monthlySummarySection}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('dashboard.monthlySummary')}</Text>
+                <Card style={[styles.summaryCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                  <View style={styles.summaryItemRow}>
+                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Income</Text>
+                    <Text style={[styles.summaryValue, { color: colors.success }]}>{fmt(income)}</Text>
+                  </View>
+                  <View style={styles.summaryItemRow}>
+                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Expenses</Text>
+                    <Text style={[styles.summaryValue, { color: colors.danger }]}>{fmt(expenses)}</Text>
+                  </View>
+                  <View style={styles.summaryItemRow}>
+                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Savings</Text>
+                    <Text style={[styles.summaryValue, { color: colors.accent }]}>{fmt(savings)}</Text>
+                  </View>
+                  <View style={styles.summaryItemRow}>
+                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>{t('dashboard.savingsRate')}</Text>
+                    <Text style={[styles.summaryValue, { color: colors.text }]}>{rate.toFixed(0)}%</Text>
+                  </View>
+                  <Button
+                    label={t('dashboard.viewFullReport')}
+                    variant="outline"
+                    size="small"
+                    style={styles.summaryReportBtn}
+                    onPress={() => setReportModalVisible(true)}
+                  />
+                </Card>
+              </View>
+
+              {/* Financial Summary Grid */}
+              <View style={styles.summaryGrid}>
+                <View style={styles.gridColumn}>
+                  <Card variant="flat" style={[styles.gridItem, { backgroundColor: colors.backgroundElement }]}>
+                    <Award color={colors.success} size={18} />
+                    <Text style={[styles.gridItemLabel, { color: colors.textSecondary }]}>{t('dashboard.assets')}</Text>
+                    <Text numberOfLines={1} style={[styles.gridItemValue, { color: colors.text }]}>{fmt(totalAssets)}</Text>
+                  </Card>
+                  <Card variant="flat" style={[styles.gridItem, { backgroundColor: colors.backgroundElement }]}>
+                    <Wallet color={colors.accent} size={18} />
+                    <Text style={[styles.gridItemLabel, { color: colors.textSecondary }]}>{t('dashboard.monthlySavings')}</Text>
+                    <Text numberOfLines={1} style={[styles.gridItemValue, { color: colors.text }]}>{fmt(savings)}</Text>
+                  </Card>
+                </View>
+                <View style={styles.gridColumn}>
+                  <Card variant="flat" style={[styles.gridItem, { backgroundColor: colors.backgroundElement }]}>
+                    <ShieldAlert color={colors.danger} size={18} />
+                    <Text style={[styles.gridItemLabel, { color: colors.textSecondary }]}>{t('dashboard.liabilities')}</Text>
+                    <Text numberOfLines={1} style={[styles.gridItemValue, { color: colors.text }]}>{fmt(totalLiabilities)}</Text>
+                  </Card>
+                  <Card variant="flat" style={[styles.gridItem, { backgroundColor: colors.backgroundElement }]}>
+                    <TrendingUp color={colors.warning} size={18} />
+                    <Text style={[styles.gridItemLabel, { color: colors.textSecondary }]}>{t('dashboard.portfolioReturn')}</Text>
+                    <Text numberOfLines={1} style={[styles.gridItemValue, { color: colors.text }]}>
+                      {totalReturn >= 0 ? '+' : ''}{returnPercentage.toFixed(1)}%
+                    </Text>
+                  </Card>
                 </View>
               </View>
-              <TouchableOpacity onPress={() => router.push('/(tabs)/investments')} style={styles.sipViewDetails}>
-                <Text style={[styles.sipDetailsText, { color: colors.accent }]}>{t('dashboard.viewDetails')}</Text>
-              </TouchableOpacity>
-            </Card>
+
+              {/* Connected Accounts Slider */}
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('dashboard.connectedAccounts')}</Text>
+                <TouchableOpacity onPress={() => router.push('/(tabs)/accounts')}>
+                  <Text style={[styles.viewAllText, { color: colors.accent }]}>{t('dashboard.viewAll')}</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalAccounts}>
+                {accounts.map((acc) => (
+                  <Card
+                    key={acc.id}
+                    onPress={() => router.push(`/account/${acc.id}`)}
+                    style={[styles.accountSliderCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                    <View style={styles.sliderHeader}>
+                      {acc.providerType === 'bank' ? (
+                        <Building2 size={16} color={colors.accent} style={styles.sliderIcon} />
+                      ) : (
+                        <Smartphone size={16} color={colors.success} style={styles.sliderIcon} />
+                      )}
+                      <Text numberOfLines={1} style={[styles.sliderProviderName, { color: colors.text }]}>
+                        {acc.providerName}
+                      </Text>
+                    </View>
+                    <Text numberOfLines={1} style={[styles.sliderBalance, { color: colors.text }]}>
+                      {fmt(acc.balance)}
+                    </Text>
+                    <Text style={[styles.sliderType, { color: colors.textSecondary }]}>
+                      {acc.accountType}
+                    </Text>
+                  </Card>
+                ))}
+                {accounts.length === 0 && (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => router.push('/account/connect')}
+                    style={[styles.accountSliderEmpty, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                    <Plus size={20} color={colors.textSecondary} />
+                    <Text style={[styles.emptyAddText, { color: colors.textSecondary }]}>{t('accounts.connectBtn')}</Text>
+                  </TouchableOpacity>
+                )}
+              </ScrollView>
+            </View>
+
+            {/* RIGHT COLUMN */}
+            <View style={[styles.column, isWideScreen && styles.rightColumnWide]}>
+              
+              {/* Quick Actions Panel */}
+              <View style={styles.actionsSection}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('dashboard.quickActions')}</Text>
+                <View style={styles.quickActionsContainer}>
+                  <TouchableOpacity 
+                    style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
+                    onPress={() => router.push('/account/connect')}
+                  >
+                    <Building2 size={20} color={colors.accent} style={styles.quickActionIcon} />
+                    <Text numberOfLines={1} style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addAccount')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
+                    onPress={() => router.push('/investment/add')}
+                  >
+                    <TrendingUp size={20} color={colors.success} style={styles.quickActionIcon} />
+                    <Text numberOfLines={1} style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addSip')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
+                    onPress={() => router.push('/goals/add')}
+                  >
+                    <Target size={20} color={colors.warning} style={styles.quickActionIcon} />
+                    <Text numberOfLines={1} style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addGoal')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
+                    onPress={() => setTxModalVisible(true)}
+                  >
+                    <Receipt size={20} color={colors.primary} style={styles.quickActionIcon} />
+                    <Text numberOfLines={1} style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addTx')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Financial Health Score circular gauge */}
+              <View style={styles.healthSection}>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: Spacing.two }]}>{t('dashboard.financialHealth')}</Text>
+                <Card style={[styles.healthCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <FinancialScore score={financialScore.totalScore} />
+                  <TouchableOpacity
+                    onPress={() => router.push('/settings/profile')}
+                    style={[styles.breakdownButton, { borderColor: colors.border, backgroundColor: colors.backgroundElement }]}>
+                    <Text style={[styles.breakdownText, { color: colors.text }]}>{t('dashboard.viewBreakdown')}</Text>
+                  </TouchableOpacity>
+                </Card>
+              </View>
+
+              {/* Upcoming SIP Card */}
+              {nextSip && (
+                <View style={styles.sipSection}>
+                  <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: Spacing.two }]}>{t('dashboard.upcomingSip')}</Text>
+                  <Card style={[styles.sipCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                    <View style={styles.sipBadgeContainer}>
+                      <Text style={[styles.sipBadge, { backgroundColor: `${colors.warning}15`, color: colors.warning }]}>
+                        {nextSip.status === 'Overdue' ? t('invest.filterOverdue') : t('dashboard.dueSoon')}
+                      </Text>
+                    </View>
+                    <Text style={[styles.sipFundName, { color: colors.text }]}>{nextSip.name}</Text>
+                    <View style={styles.sipDetailsRow}>
+                      <View>
+                        <Text style={[styles.sipLabel, { color: colors.textSecondary }]}>{t('invest.upcomingSips')}</Text>
+                        <Text style={[styles.sipValue, { color: colors.text }]}>
+                          {fmt(nextSip.monthlyContribution || 0)}
+                        </Text>
+                      </View>
+                      <View style={styles.alignRight}>
+                        <Text style={[styles.sipLabel, { color: colors.textSecondary }]}>{t('invest.nextDue')}</Text>
+                        <Text style={[styles.sipValue, { color: colors.text }]}>
+                          {nextSip.nextPaymentDate ? new Date(nextSip.nextPaymentDate).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                          }) : 'N/A'}
+                        </Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity onPress={() => router.push('/(tabs)/investments')} style={styles.sipViewDetails}>
+                      <Text style={[styles.sipDetailsText, { color: colors.accent }]}>{t('dashboard.viewDetails')}</Text>
+                    </TouchableOpacity>
+                  </Card>
+                </View>
+              )}
+
+              {/* Smart Insights */}
+              <View style={styles.insightsSection}>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: Spacing.two }]}>{t('dashboard.smartInsights')}</Text>
+                <Card style={[styles.insightCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  {dynamicInsights.map((insight, idx) => (
+                    <View key={idx} style={styles.insightRow}>
+                      <View style={styles.insightIconWrap}>{insight.icon}</View>
+                      <Text style={[styles.insightText, { color: colors.text }]}>
+                        {insight.text}
+                      </Text>
+                    </View>
+                  ))}
+                </Card>
+              </View>
+
+            </View>
+
           </View>
-        )}
-
-        {/* Financial Health Score circular gauge */}
-        <View style={styles.healthSection}>
-          <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: Spacing.two }]}>{t('dashboard.financialHealth')}</Text>
-          <Card style={styles.healthCard}>
-            <FinancialScore score={financialScore.totalScore} />
-            <TouchableOpacity
-              onPress={() => router.push('/settings/profile')}
-              style={[styles.breakdownButton, { borderColor: colors.border }]}>
-              <Text style={[styles.breakdownText, { color: colors.text }]}>{t('dashboard.viewBreakdown')}</Text>
-            </TouchableOpacity>
-          </Card>
-        </View>
-
-        {/* Smart Insights */}
-        <View style={styles.insightsSection}>
-          <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: Spacing.two }]}>{t('dashboard.smartInsights')}</Text>
-          <Card style={styles.insightCard}>
-            <View style={styles.insightRow}>
-              <Text style={styles.insightEmoji}>💡</Text>
-              <Text style={[styles.insightText, { color: colors.text }]}>
-                You spent 18% more on Food & Dining compared to last month. Consider cooking at home.
-              </Text>
-            </View>
-            <View style={styles.insightRow}>
-              <Text style={styles.insightEmoji}>💡</Text>
-              <Text style={[styles.insightText, { color: colors.text }]}>
-                Your SIP contributions are consistent. Great job compounding your wealth!
-              </Text>
-            </View>
-            <View style={styles.insightRow}>
-              <Text style={styles.insightEmoji}>⚠️</Text>
-              <Text style={[styles.insightText, { color: colors.text }]}>
-                Your emergency fund is below your recommended target of Rs. 3,00,000.
-              </Text>
-            </View>
-          </Card>
         </View>
 
         <View style={styles.bottomSpacer} />
@@ -410,25 +573,39 @@ export default function Home() {
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>{t('dashboard.addTx')}</Text>
               <TouchableOpacity onPress={() => setTxModalVisible(false)}>
-                <X color={colors.text} size={22} />
+                <X color={colors.text} size={20} />
               </TouchableOpacity>
             </View>
 
             <ScrollView contentContainerStyle={styles.modalScroll}>
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Title</Text>
               <TextInput
-                style={[styles.modalInput, { color: colors.text, borderColor: colors.border }]}
+                style={[
+                  styles.modalInput,
+                  {
+                    color: isDark ? '#F8FAFC' : '#0F172A',
+                    borderColor: isDark ? '#334155' : '#CBD5E1',
+                    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                  },
+                ]}
                 placeholder="e.g. Salary, Groceries"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                 value={txTitle}
                 onChangeText={setTxTitle}
               />
 
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Amount (Rs.)</Text>
               <TextInput
-                style={[styles.modalInput, { color: colors.text, borderColor: colors.border }]}
+                style={[
+                  styles.modalInput,
+                  {
+                    color: isDark ? '#F8FAFC' : '#0F172A',
+                    borderColor: isDark ? '#334155' : '#CBD5E1',
+                    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                  },
+                ]}
                 placeholder="e.g. 5000"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
                 keyboardType="numeric"
                 value={txAmount}
                 onChangeText={setTxAmount}
@@ -439,7 +616,7 @@ export default function Home() {
                 <TouchableOpacity
                   style={[
                     styles.typeBtn,
-                    { borderColor: colors.border },
+                    { borderColor: colors.border, backgroundColor: colors.backgroundElement },
                     txType === 'expense' && { backgroundColor: `${colors.danger}15`, borderColor: colors.danger }
                   ]}
                   onPress={() => {
@@ -454,7 +631,7 @@ export default function Home() {
                 <TouchableOpacity
                   style={[
                     styles.typeBtn,
-                    { borderColor: colors.border },
+                    { borderColor: colors.border, backgroundColor: colors.backgroundElement },
                     txType === 'income' && { backgroundColor: `${colors.success}15`, borderColor: colors.success }
                   ]}
                   onPress={() => {
@@ -490,7 +667,7 @@ export default function Home() {
                 ))}
               </View>
 
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Deduct/Add Account</Text>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Deduct/Add Account (Optional)</Text>
               <View style={styles.categoriesWrap}>
                 {accounts.map((acc) => (
                   <TouchableOpacity
@@ -508,11 +685,6 @@ export default function Home() {
                   </TouchableOpacity>
                 ))}
               </View>
-              {accounts.length === 0 && (
-                <Text style={{ color: colors.danger, fontSize: 13, marginTop: 4 }}>
-                  No linked accounts. Please link a wallet or bank account first.
-                </Text>
-              )}
 
               <Button
                 label={t('general.save')}
@@ -534,7 +706,7 @@ export default function Home() {
                 {t('dashboard.comparisonReport')}
               </Text>
               <TouchableOpacity onPress={() => setReportModalVisible(false)}>
-                <X color={colors.text} size={22} />
+                <X color={colors.text} size={20} />
               </TouchableOpacity>
             </View>
 
@@ -543,48 +715,32 @@ export default function Home() {
                 <Text style={[styles.reportSectionTitle, { color: colors.text }]}>{t('dashboard.incomeChange')}</Text>
                 <View style={styles.reportGridRow}>
                   <View>
-                    <Text style={[styles.reportCellLabel, { color: colors.textSecondary }]}>Previous Month</Text>
-                    <Text style={[styles.reportCellValue, { color: colors.text }]}>{fmt(80000)}</Text>
-                  </View>
-                  <View style={styles.alignRight}>
-                    <Text style={[styles.reportCellLabel, { color: colors.textSecondary }]}>Current Month</Text>
-                    <Text style={[styles.reportCellValue, { color: colors.success }]}>+{fmt(income || 85000)}</Text>
+                    <Text style={[styles.reportCellLabel, { color: colors.textSecondary }]}>Total Income</Text>
+                    <Text style={[styles.reportCellValue, { color: colors.success }]}>+{fmt(income)}</Text>
                   </View>
                 </View>
-                <Text style={[styles.reportTrendText, { color: colors.success }]}>
-                  ▲ Rs. 5,000 (+6.2%) increase in monthly earnings.
-                </Text>
               </Card>
 
               <Card variant="outline" style={styles.reportSectionCard}>
                 <Text style={[styles.reportSectionTitle, { color: colors.text }]}>{t('dashboard.expenseChange')}</Text>
                 <View style={styles.reportGridRow}>
                   <View>
-                    <Text style={[styles.reportCellLabel, { color: colors.textSecondary }]}>Previous Month</Text>
-                    <Text style={[styles.reportCellValue, { color: colors.text }]}>{fmt(40000)}</Text>
-                  </View>
-                  <View style={styles.alignRight}>
-                    <Text style={[styles.reportCellLabel, { color: colors.textSecondary }]}>Current Month</Text>
+                    <Text style={[styles.reportCellLabel, { color: colors.textSecondary }]}>Total Expenses</Text>
                     <Text style={[styles.reportCellValue, { color: colors.danger }]}>-{fmt(expenses)}</Text>
                   </View>
                 </View>
-                <Text style={[styles.reportTrendText, { color: expenses > 40000 ? colors.danger : colors.success }]}>
-                  {expenses > 40000 
-                    ? `▼ Rs. ${(expenses - 40000).toLocaleString('en-IN')} (+${((expenses - 40000)/40000 * 100).toFixed(0)}%) rise in monthly spending.`
-                    : `▲ Rs. ${(40000 - expenses).toLocaleString('en-IN')} (-${((40000 - expenses)/40000 * 100).toFixed(0)}%) savings in monthly spending.`}
-                </Text>
               </Card>
 
               <Card variant="outline" style={styles.reportSectionCard}>
                 <Text style={[styles.reportSectionTitle, { color: colors.text }]}>{t('dashboard.savingsChange')}</Text>
                 <View style={styles.reportGridRow}>
                   <View>
-                    <Text style={[styles.reportCellLabel, { color: colors.textSecondary }]}>Previous Month</Text>
-                    <Text style={[styles.reportCellValue, { color: colors.text }]}>{fmt(40000)}</Text>
+                    <Text style={[styles.reportCellLabel, { color: colors.textSecondary }]}>Net Monthly Savings</Text>
+                    <Text style={[styles.reportCellValue, { color: colors.accent }]}>{fmt(savings)}</Text>
                   </View>
                   <View style={styles.alignRight}>
-                    <Text style={[styles.reportCellLabel, { color: colors.textSecondary }]}>Current Month</Text>
-                    <Text style={[styles.reportCellValue, { color: colors.accent }]}>{fmt(income > 0 ? savings : (85000 - expenses))}</Text>
+                    <Text style={[styles.reportCellLabel, { color: colors.textSecondary }]}>{t('dashboard.savingsRate')}</Text>
+                    <Text style={[styles.reportCellValue, { color: colors.text }]}>{rate.toFixed(1)}%</Text>
                   </View>
                 </View>
               </Card>
@@ -592,11 +748,15 @@ export default function Home() {
               <Card variant="outline" style={styles.reportSectionCard}>
                 <View style={styles.summaryItemRow}>
                   <Text style={[styles.reportSectionTitle, { color: colors.text }]}>{t('dashboard.biggestSpending')}</Text>
-                  <Text style={[styles.reportCellValue, { color: colors.danger, fontSize: 13 }]}>Food & Dining</Text>
+                  <Text style={[styles.reportCellValue, { color: colors.danger, fontSize: 13 }]}>
+                    {categoryExpenses[0] ? `${categoryExpenses[0].category} (${fmt(categoryExpenses[0].amount)})` : 'None'}
+                  </Text>
                 </View>
                 <View style={styles.summaryItemRow}>
                   <Text style={[styles.reportSectionTitle, { color: colors.text }]}>{t('dashboard.investmentContribution')}</Text>
-                  <Text style={[styles.reportCellValue, { color: colors.success, fontSize: 13 }]}>Rs. 10,000</Text>
+                  <Text style={[styles.reportCellValue, { color: colors.success, fontSize: 13 }]}>
+                    {fmt(investments.reduce((sum, i) => sum + i.purchaseValue, 0))}
+                  </Text>
                 </View>
               </Card>
 
@@ -619,12 +779,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    borderBottomWidth: 1,
+    paddingVertical: Spacing.two,
+  },
+  headerInner: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two * 1.5,
-    borderBottomWidth: 1,
+    maxWidth: 1280,
+    width: '100%',
+    alignSelf: 'center',
   },
   greetingText: {
     ...Typography.bodySmall,
@@ -637,12 +802,12 @@ const styles = StyleSheet.create({
   },
   headerActions: {
     flexDirection: 'row',
-    gap: Spacing.three,
+    gap: Spacing.two,
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -664,8 +829,35 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   scrollContent: {
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: Spacing.three,
     paddingTop: Spacing.three,
+    alignItems: 'center',
+  },
+  responsiveContainer: {
+    width: '100%',
+    maxWidth: 1280,
+  },
+  responsiveContainerWide: {
+    paddingHorizontal: Spacing.two,
+  },
+  dashboardGrid: {
+    width: '100%',
+    flexDirection: 'column',
+    gap: Spacing.two,
+  },
+  dashboardGridWide: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.four,
+  },
+  column: {
+    width: '100%',
+  },
+  leftColumnWide: {
+    flex: 1.25,
+  },
+  rightColumnWide: {
+    flex: 1,
   },
   netWorthCard: {
     backgroundColor: '#0F172A',
@@ -689,7 +881,7 @@ const styles = StyleSheet.create({
   },
   netWorthAmount: {
     ...Typography.display,
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: '800',
     marginBottom: Spacing.two,
   },
@@ -697,54 +889,60 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
-    marginBottom: Spacing.three,
+    marginBottom: Spacing.two,
   },
   netWorthTrendText: {
     ...Typography.bodySmall,
     fontSize: 12,
   },
   sparklineBox: {
-    height: 120,
+    minHeight: 140,
     marginTop: Spacing.one,
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   actionsSection: {
-    marginTop: Spacing.four,
+    marginTop: Spacing.one,
+    marginBottom: Spacing.two,
   },
   sectionTitle: {
     ...Typography.h3,
-    marginBottom: Spacing.three,
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: Spacing.two,
   },
   quickActionsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
+    flexWrap: 'wrap',
     gap: Spacing.two,
+    width: '100%',
   },
   quickActionItem: {
-    flex: 1,
+    flexBasis: '22%',
+    flexGrow: 1,
+    minWidth: 75,
     borderRadius: 12,
     borderWidth: 1,
-    paddingVertical: Spacing.three,
+    paddingVertical: Spacing.two * 1.2,
+    paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
   quickActionIcon: {
-    fontSize: 22,
     marginBottom: 6,
   },
   quickActionText: {
     ...Typography.caption,
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '700',
     textAlign: 'center',
   },
   monthlySummarySection: {
-    marginTop: Spacing.four,
+    marginTop: Spacing.three,
   },
   summaryCard: {
     borderWidth: 1,
     padding: Spacing.four,
+    borderRadius: 16,
   },
   summaryItemRow: {
     flexDirection: 'row',
@@ -758,34 +956,35 @@ const styles = StyleSheet.create({
   },
   summaryValue: {
     ...Typography.bodyLarge,
-    fontSize: 16,
+    fontSize: 15.5,
   },
   summaryReportBtn: {
     marginTop: Spacing.three,
   },
   summaryGrid: {
     flexDirection: 'row',
-    gap: Spacing.three,
-    marginTop: Spacing.four,
+    gap: Spacing.two,
+    marginTop: Spacing.three,
   },
   gridColumn: {
     flex: 1,
-    gap: Spacing.three,
+    gap: Spacing.two,
   },
   gridItem: {
     padding: Spacing.three,
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 0,
   },
   gridItemLabel: {
     ...Typography.caption,
     fontWeight: '600',
-    marginTop: 6,
+    marginTop: 4,
     marginBottom: 2,
   },
   gridItemValue: {
     ...Typography.bodyLarge,
-    fontSize: 15,
+    fontSize: 14.5,
+    fontWeight: '800',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -795,276 +994,257 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.two,
   },
   viewAllText: {
-    ...Typography.bodySmall,
+    ...Typography.caption,
+    fontSize: 12,
     fontWeight: '700',
   },
   horizontalAccounts: {
     paddingVertical: Spacing.one,
-    gap: Spacing.three,
+    gap: Spacing.two,
   },
   accountSliderCard: {
-    width: 140,
+    width: 165,
+    padding: Spacing.three,
+    borderRadius: 14,
     borderWidth: 1,
   },
   sliderHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
-    marginBottom: Spacing.two,
+    marginBottom: Spacing.one,
   },
-  sliderProviderEmoji: {
-    fontSize: 16,
+  sliderIcon: {
+    marginRight: 6,
   },
   sliderProviderName: {
-    ...Typography.bodySmall,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     flex: 1,
   },
   sliderBalance: {
-    ...Typography.bodyLarge,
-    fontSize: 15,
+    fontSize: 14.5,
+    fontWeight: '800',
+    marginVertical: 4,
   },
   sliderType: {
-    ...Typography.caption,
-    fontSize: 10,
-    marginTop: 2,
+    fontSize: 11,
+    fontWeight: '500',
   },
   accountSliderEmpty: {
     width: 140,
-    height: 98,
-    borderRadius: 16,
+    height: 100,
+    borderRadius: 14,
     borderWidth: 1.5,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: Spacing.one * 1.5,
-  },
-  emptyAddIcon: {
-    fontSize: 24,
-    fontWeight: '300',
-    marginBottom: 2,
+    gap: 6,
   },
   emptyAddText: {
-    ...Typography.caption,
     fontSize: 11,
     fontWeight: '700',
   },
   sipSection: {
-    marginTop: Spacing.four,
+    marginTop: Spacing.three,
   },
   sipCard: {
     borderWidth: 1,
+    padding: Spacing.four,
+    borderRadius: 16,
   },
   sipBadgeContainer: {
     flexDirection: 'row',
-    marginBottom: Spacing.two,
+    marginBottom: Spacing.one,
   },
   sipBadge: {
-    ...Typography.caption,
     fontSize: 10,
-    fontWeight: '700',
-    paddingHorizontal: Spacing.two,
+    fontWeight: '800',
+    paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
+    textTransform: 'uppercase',
   },
   sipFundName: {
-    ...Typography.bodyLarge,
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: Spacing.three,
+    fontSize: 15,
+    fontWeight: '800',
+    marginVertical: 4,
   },
   sipDetailsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: Spacing.two,
+    marginTop: Spacing.two,
   },
   sipLabel: {
-    ...Typography.caption,
-    fontSize: 10,
-    marginBottom: 4,
+    fontSize: 11,
+    fontWeight: '600',
   },
   sipValue: {
-    ...Typography.bodySmall,
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 13.5,
+    fontWeight: '800',
+    marginTop: 2,
   },
   alignRight: {
     alignItems: 'flex-end',
   },
   sipViewDetails: {
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    paddingVertical: Spacing.one,
-    marginTop: Spacing.two,
+    marginTop: Spacing.three,
+    paddingTop: Spacing.two,
+    borderTopWidth: 0.5,
+    borderColor: '#E2E8F0',
   },
   sipDetailsText: {
-    ...Typography.bodySmall,
+    fontSize: 12,
     fontWeight: '700',
+    textAlign: 'center',
   },
   healthSection: {
-    marginTop: Spacing.four,
+    marginTop: Spacing.two,
   },
   healthCard: {
     alignItems: 'center',
-    paddingVertical: Spacing.four,
+    padding: Spacing.four,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   breakdownButton: {
-    borderWidth: 1.5,
-    borderRadius: 10,
-    paddingVertical: Spacing.two,
+    borderWidth: 1,
+    borderRadius: 20,
     paddingHorizontal: Spacing.four,
-    marginTop: Spacing.two,
-    width: '100%',
-    alignItems: 'center',
+    paddingVertical: Spacing.two,
+    marginTop: Spacing.three,
   },
   breakdownText: {
-    ...Typography.bodySmall,
+    fontSize: 12,
     fontWeight: '700',
   },
   insightsSection: {
-    marginTop: Spacing.four,
+    marginTop: Spacing.three,
   },
   insightCard: {
+    padding: Spacing.four,
+    borderRadius: 16,
+    borderWidth: 1,
     gap: Spacing.three,
   },
   insightRow: {
     flexDirection: 'row',
-    gap: Spacing.three,
     alignItems: 'flex-start',
+    gap: Spacing.two,
   },
-  insightEmoji: {
-    fontSize: 18,
-    marginTop: -2,
+  insightIconWrap: {
+    marginTop: 2,
   },
   insightText: {
-    ...Typography.body,
-    fontSize: 13.5,
+    fontSize: 12.5,
     lineHeight: 18,
     flex: 1,
+    fontWeight: '500',
   },
   bottomSpacer: {
     height: 90,
   },
-
-  // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.four,
   },
   modalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderWidth: 1,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.five,
+    width: '100%',
+    maxWidth: 440,
     maxHeight: '85%',
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: Spacing.four,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Spacing.three,
-    paddingBottom: Spacing.two,
-    borderBottomWidth: 0.5,
-    borderColor: '#A0AEC0',
   },
   modalTitle: {
-    ...Typography.h2,
+    fontSize: 18,
+    fontWeight: '800',
   },
   modalScroll: {
-    paddingBottom: Spacing.four,
+    gap: Spacing.two,
   },
   inputLabel: {
-    ...Typography.bodySmall,
+    fontSize: 12.5,
     fontWeight: '700',
-    marginTop: Spacing.three,
-    marginBottom: 6,
+    marginTop: Spacing.one,
   },
   modalInput: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: 10,
-    padding: Spacing.two * 1.2,
-    ...Typography.body,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    fontSize: 14,
   },
   typeSelectorRow: {
     flexDirection: 'row',
-    gap: Spacing.three,
-    marginVertical: Spacing.one,
+    gap: Spacing.two,
+    marginVertical: 4,
   },
   typeBtn: {
     flex: 1,
     borderWidth: 1.5,
-    borderRadius: 10,
+    borderRadius: 8,
     paddingVertical: Spacing.two,
     alignItems: 'center',
   },
   typeBtnText: {
-    ...Typography.bodySmall,
+    fontSize: 12,
     fontWeight: '700',
   },
   categoriesWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.two,
-    marginVertical: Spacing.one,
+    gap: 6,
+    marginVertical: 4,
   },
   categoryChip: {
     borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one * 1.5,
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   categoryChipText: {
-    ...Typography.bodySmall,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   modalSubmitBtn: {
-    marginTop: Spacing.four * 1.5,
+    marginTop: Spacing.three,
   },
-
-  // Report Styles
   reportScroll: {
-    paddingBottom: Spacing.four,
+    gap: Spacing.three,
   },
   reportSectionCard: {
     padding: Spacing.three,
-    marginVertical: Spacing.two,
+    borderRadius: 12,
   },
   reportSectionTitle: {
-    ...Typography.bodyLarge,
+    fontSize: 13,
     fontWeight: '700',
-    marginBottom: Spacing.two,
+    marginBottom: 4,
   },
   reportGridRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginVertical: Spacing.one,
+    marginVertical: 4,
   },
   reportCellLabel: {
-    ...Typography.caption,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '500',
   },
   reportCellValue: {
-    ...Typography.bodySmall,
-    fontWeight: '700',
     fontSize: 14,
+    fontWeight: '800',
     marginTop: 2,
   },
-  reportTrendText: {
-    ...Typography.bodySmall,
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: Spacing.two,
-    paddingTop: Spacing.one,
-    borderTopWidth: 0.5,
-    borderColor: '#E2E8F0',
-  },
   modalCloseBtn: {
-    marginTop: Spacing.four,
+    marginTop: Spacing.two,
   },
 });

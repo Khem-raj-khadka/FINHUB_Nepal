@@ -1,19 +1,15 @@
-import React from 'react';
-import { View, Text, StyleSheet, Dimensions, useColorScheme } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, useWindowDimensions, LayoutChangeEvent } from 'react-native';
 import Svg, {
   Path,
   Circle,
   Defs,
   LinearGradient,
   Stop,
-  Rect,
   Text as SvgText,
 } from 'react-native-svg';
-import { Colors, Spacing } from '../../constants/theme';
-
+import { Spacing } from '../../constants/theme';
 import { useAppTheme } from '../../hooks/useAppTheme';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
 
 // ==========================================
 // 1. LINE CHART COMPONENT
@@ -23,39 +19,66 @@ interface LineChartProps {
   labels: string[];
   height?: number;
   width?: number;
+  onDarkCard?: boolean;
+  lineColor?: string;
+  gradientFrom?: string;
+  gradientTo?: string;
 }
 
-export function LineChart({ data, labels, height = 180, width }: LineChartProps) {
+export function LineChart({
+  data,
+  labels,
+  height = 180,
+  width,
+  onDarkCard = false,
+  lineColor,
+  gradientFrom,
+  gradientTo,
+}: LineChartProps) {
   const { colors, isDark } = useAppTheme();
-  
-  const chartWidth = width || SCREEN_WIDTH - Spacing.four * 2;
-  const paddingLeft = 55; // increased padding to fit Lakhs
-  const paddingRight = 15;
-  const paddingTop = 20;
-  const paddingBottom = 25;
+  const { width: windowWidth } = useWindowDimensions();
+  const [containerWidth, setContainerWidth] = useState<number>(0);
 
-  const graphWidth = chartWidth - paddingLeft - paddingRight;
-  const graphHeight = height - paddingTop - paddingBottom;
+  const handleLayout = (e: LayoutChangeEvent) => {
+    const layoutWidth = e.nativeEvent.layout.width;
+    if (layoutWidth > 0 && Math.abs(layoutWidth - containerWidth) > 2) {
+      setContainerWidth(layoutWidth);
+    }
+  };
+
+  const chartWidth = Math.max(
+    200,
+    width || containerWidth || (windowWidth - Spacing.four * 4)
+  );
+
+  const paddingLeft = 56;
+  const paddingRight = 24;
+  const paddingTop = 22;
+  const paddingBottom = 28;
+
+  const graphWidth = Math.max(10, chartWidth - paddingLeft - paddingRight);
+  const graphHeight = Math.max(10, height - paddingTop - paddingBottom);
 
   if (!data || data.length === 0) {
     return (
-      <View style={[styles.center, { height }]}>
-        <Text style={{ color: colors.textSecondary, fontSize: 13 }}>No net worth history available.</Text>
+      <View style={[styles.center, { height }]} onLayout={handleLayout}>
+        <Text style={{ color: onDarkCard ? '#CBD5E1' : colors.textSecondary, fontSize: 13 }}>
+          No net worth history available.
+        </Text>
       </View>
     );
   }
 
-  const minVal = Math.min(...data) * 0.95; 
-  const maxVal = Math.max(...data) * 1.05; 
+  const rawMin = Math.min(...data);
+  const rawMax = Math.max(...data);
+  const minVal = rawMin === rawMax ? rawMin * 0.9 : rawMin * 0.96;
+  const maxVal = rawMin === rawMax ? rawMax * 1.1 : rawMax * 1.04;
   const valRange = maxVal - minVal || 1;
 
   // Map data to SVG points safely
   const divisor = data.length > 1 ? data.length - 1 : 1;
   const points = data.map((val, idx) => {
-    // If only 1 data point, center it horizontally
-    const xOffset = data.length > 1 
-      ? (idx / divisor) * graphWidth 
-      : graphWidth / 2;
+    const xOffset = data.length > 1 ? (idx / divisor) * graphWidth : graphWidth / 2;
     const x = paddingLeft + xOffset;
     const y = paddingTop + graphHeight - ((val - minVal) / valRange) * graphHeight;
     return { x, y, value: val };
@@ -71,23 +94,42 @@ export function LineChart({ data, labels, height = 180, width }: LineChartProps)
       pathD += ` L ${p.x} ${p.y}`;
     });
 
-    // For the filled area underneath the line
     areaD = `${pathD} L ${points[points.length - 1].x} ${paddingTop + graphHeight} L ${points[0].x} ${paddingTop + graphHeight} Z`;
   }
 
   // Y-axis grid helper lines (3 lines)
   const yTicks = [minVal, minVal + valRange / 2, maxVal];
 
-  // Grid stroke color
-  const gridColor = isDark ? '#2D3748' : '#E2E8F0';
+  // High contrast theme colors
+  const activeLineColor = lineColor || (onDarkCard ? '#38BDF8' : colors.accent);
+  const activeLabelColor = onDarkCard ? '#E2E8F0' : colors.textSecondary;
+  const activeGridColor = onDarkCard
+    ? 'rgba(255, 255, 255, 0.15)'
+    : isDark
+    ? '#2D3748'
+    : '#E2E8F0';
+  const dotFill = onDarkCard ? '#0F172A' : colors.card;
+
+  const gradFrom = gradientFrom || (onDarkCard ? 'rgba(56, 189, 248, 0.45)' : `${colors.accent}45`);
+  const gradTo = gradientTo || (onDarkCard ? 'rgba(56, 189, 248, 0.0)' : `${colors.accent}00`);
+
+  const formatYLabel = (val: number) => {
+    if (val >= 100000) {
+      return `Rs. ${(val / 100000).toFixed(1)}L`;
+    }
+    if (val >= 1000) {
+      return `Rs. ${(val / 1000).toFixed(0)}k`;
+    }
+    return `Rs. ${Math.round(val)}`;
+  };
 
   return (
-    <View style={styles.chartContainer}>
+    <View style={styles.chartContainer} onLayout={handleLayout}>
       <Svg width={chartWidth} height={height}>
         <Defs>
           <LinearGradient id="gradientArea" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%" stopColor={colors.accent} stopOpacity="0.4" />
-            <Stop offset="100%" stopColor={colors.accent} stopOpacity="0.0" />
+            <Stop offset="0%" stopColor={gradFrom} stopOpacity="1" />
+            <Stop offset="100%" stopColor={gradTo} stopOpacity="0" />
           </LinearGradient>
         </Defs>
 
@@ -96,24 +138,20 @@ export function LineChart({ data, labels, height = 180, width }: LineChartProps)
           const y = paddingTop + graphHeight - ((tick - minVal) / valRange) * graphHeight;
           return (
             <React.Fragment key={i}>
-              {/* Grid Line */}
               <Path
                 d={`M ${paddingLeft} ${y} L ${chartWidth - paddingRight} ${y}`}
-                stroke={gridColor}
-                strokeWidth="1.2"
+                stroke={activeGridColor}
+                strokeWidth="1"
                 strokeDasharray="4 4"
               />
-              {/* Label */}
               <SvgText
                 x={paddingLeft - 8}
-                y={y + 4}
-                fill={colors.textSecondary}
+                y={y + 3.5}
+                fill={activeLabelColor}
                 fontSize="10"
-                fontWeight="600"
+                fontWeight="700"
                 textAnchor="end">
-                {tick >= 100000
-                  ? `Rs. ${(tick / 100000).toFixed(1)}L`
-                  : `Rs. ${(tick / 1000).toFixed(0)}k`}
+                {formatYLabel(tick)}
               </SvgText>
             </React.Fragment>
           );
@@ -123,18 +161,27 @@ export function LineChart({ data, labels, height = 180, width }: LineChartProps)
         {areaD ? <Path d={areaD} fill="url(#gradientArea)" /> : null}
 
         {/* Main Line */}
-        {pathD ? <Path d={pathD} fill="none" stroke={colors.accent} strokeWidth="3.5" /> : null}
+        {pathD ? (
+          <Path
+            d={pathD}
+            fill="none"
+            stroke={activeLineColor}
+            strokeWidth="3.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ) : null}
 
         {/* Data Point Circles */}
         {points.map((p, i) => (
-          <Circle 
-            key={i} 
-            cx={p.x} 
-            cy={p.y} 
-            r="5.5" 
-            fill={colors.card} 
-            stroke={colors.accent} 
-            strokeWidth="3" 
+          <Circle
+            key={i}
+            cx={p.x}
+            cy={p.y}
+            r="5"
+            fill={dotFill}
+            stroke={activeLineColor}
+            strokeWidth="2.5"
           />
         ))}
 
@@ -144,9 +191,9 @@ export function LineChart({ data, labels, height = 180, width }: LineChartProps)
             key={i}
             x={p.x}
             y={height - 6}
-            fill={colors.textSecondary}
+            fill={activeLabelColor}
             fontSize="10"
-            fontWeight="600"
+            fontWeight="700"
             textAnchor="middle">
             {labels[i] || ''}
           </SvgText>
@@ -178,18 +225,17 @@ export function DonutChart({ data, size = 130, strokeWidth = 18 }: DonutChartPro
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
 
-  // Curated color map for expense categories
   const categoryColors: { [key: string]: string } = {
-    'Food & Dining': '#F87171', // Red
-    Rent: '#60A5FA', // Blue
-    Bills: '#FB7185', // Rose
-    Shopping: '#34D399', // Emerald
-    Investment: '#FBBF24', // Amber
-    Entertainment: '#C084FC', // Purple
-    Transport: '#818CF8', // Indigo
-    Education: '#FB923C', // Orange
-    Healthcare: '#2DD4BF', // Teal
-    Other: '#94A3B8', // Slate
+    'Food & Dining': '#F87171',
+    Rent: '#60A5FA',
+    Bills: '#FB7185',
+    Shopping: '#34D399',
+    Investment: '#FBBF24',
+    Entertainment: '#C084FC',
+    Transport: '#818CF8',
+    Education: '#FB923C',
+    Healthcare: '#2DD4BF',
+    Other: '#94A3B8',
   };
 
   let accumulatedPercentage = 0;
@@ -211,7 +257,7 @@ export function DonutChart({ data, size = 130, strokeWidth = 18 }: DonutChartPro
             const color = categoryColors[item.category] || categoryColors['Other'];
             const percentage = item.percentage;
             const strokeDashoffset = circumference - (percentage / 100) * circumference;
-            const rotation = accumulatedPercentage * 3.6 - 90; 
+            const rotation = accumulatedPercentage * 3.6 - 90;
             accumulatedPercentage += percentage;
 
             return (
@@ -263,16 +309,20 @@ export function DonutChart({ data, size = 130, strokeWidth = 18 }: DonutChartPro
 
 const styles = StyleSheet.create({
   chartContainer: {
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: Spacing.two,
+    overflow: 'visible',
   },
   donutContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-around',
     paddingVertical: Spacing.two,
     width: '100%',
+    gap: Spacing.two,
   },
   donutCenterLabel: {
     position: 'absolute',
@@ -281,17 +331,18 @@ const styles = StyleSheet.create({
   },
   donutCenterText: {
     fontSize: 11,
-    fontWeight: '500',
-    opacity: 0.7,
+    fontWeight: '600',
+    opacity: 0.8,
   },
   donutCenterAmount: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '800',
     marginTop: 2,
   },
   donutLegends: {
     flex: 1,
-    paddingLeft: Spacing.three,
+    minWidth: 140,
+    paddingLeft: Spacing.two,
     justifyContent: 'center',
   },
   legendRow: {
@@ -307,14 +358,14 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
     flex: 1,
   },
   legendVal: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     textAlign: 'right',
-    width: 32,
+    width: 34,
   },
   center: {
     justifyContent: 'center',

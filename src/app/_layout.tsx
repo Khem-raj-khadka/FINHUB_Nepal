@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
-import { Stack, DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { Stack, DarkTheme, DefaultTheme, ThemeProvider, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme, LogBox } from 'react-native';
+import { useColorScheme, LogBox, TouchableOpacity, View } from 'react-native';
+import { ChevronLeft } from 'lucide-react-native';
 import { useFinanceStore } from '../store/useFinanceStore';
 import { Colors } from '../constants/theme';
 
@@ -10,6 +11,36 @@ LogBox.ignoreAllLogs();
 
 // Prevent splash screen from hiding immediately
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+function HeaderBackButton({ tintColor, fallbackRoute }: { tintColor?: string; fallbackRoute?: string }) {
+  const router = useRouter();
+  const handlePress = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else if (fallbackRoute) {
+      router.replace(fallbackRoute as any);
+    } else {
+      router.replace('/(tabs)/home');
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel="Go back"
+      aria-label="Go back"
+      activeOpacity={0.7}
+      onPress={handlePress}
+      style={{
+        paddingVertical: 8,
+        paddingRight: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}>
+      <ChevronLeft color={tintColor || '#000000'} size={24} />
+    </TouchableOpacity>
+  );
+}
 
 export default function RootLayout() {
   const systemScheme = useColorScheme();
@@ -67,6 +98,7 @@ export default function RootLayout() {
             headerTintColor: colors.text,
             headerStyle: { backgroundColor: colors.card },
             headerShadowVisible: false,
+            headerLeft: () => <HeaderBackButton tintColor={colors.text} fallbackRoute="/(tabs)/accounts" />,
           }} 
         />
         <Stack.Screen 
@@ -77,6 +109,7 @@ export default function RootLayout() {
             headerTintColor: colors.text,
             headerStyle: { backgroundColor: colors.card },
             headerShadowVisible: false,
+            headerLeft: () => <HeaderBackButton tintColor={colors.text} fallbackRoute="/(tabs)/accounts" />,
           }} 
         />
         <Stack.Screen 
@@ -87,6 +120,7 @@ export default function RootLayout() {
             headerTintColor: colors.text,
             headerStyle: { backgroundColor: colors.card },
             headerShadowVisible: false,
+            headerLeft: () => <HeaderBackButton tintColor={colors.text} fallbackRoute="/(tabs)/investments" />,
           }} 
         />
         <Stack.Screen 
@@ -97,6 +131,7 @@ export default function RootLayout() {
             headerTintColor: colors.text,
             headerStyle: { backgroundColor: colors.card },
             headerShadowVisible: false,
+            headerLeft: () => <HeaderBackButton tintColor={colors.text} fallbackRoute="/(tabs)/goals" />,
           }} 
         />
         <Stack.Screen 
@@ -107,6 +142,7 @@ export default function RootLayout() {
             headerTintColor: colors.text,
             headerStyle: { backgroundColor: colors.card },
             headerShadowVisible: false,
+            headerLeft: () => <HeaderBackButton tintColor={colors.text} fallbackRoute="/(tabs)/home" />,
           }} 
         />
         <Stack.Screen 
@@ -117,6 +153,7 @@ export default function RootLayout() {
             headerTintColor: colors.text,
             headerStyle: { backgroundColor: colors.card },
             headerShadowVisible: false,
+            headerLeft: () => <HeaderBackButton tintColor={colors.text} fallbackRoute="/settings/profile" />,
           }} 
         />
         <Stack.Screen 
@@ -127,6 +164,7 @@ export default function RootLayout() {
             headerTintColor: colors.text,
             headerStyle: { backgroundColor: colors.card },
             headerShadowVisible: false,
+            headerLeft: () => <HeaderBackButton tintColor={colors.text} fallbackRoute="/(tabs)/home" />,
           }} 
         />
       </Stack>

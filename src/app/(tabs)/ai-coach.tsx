@@ -10,23 +10,28 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
-import { Send, Trash2, Sparkles, BrainCircuit } from 'lucide-react-native';
+import { Send, Trash2, Sparkles, BrainCircuit, Bot, User } from 'lucide-react-native';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { Spacing } from '../../constants/theme';
 import Typography from '../../constants/Typography';
 import Card from '../../components/ui/Card';
+import FeedbackModal from '../../components/ui/FeedbackModal';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { useTranslation } from '../../i18n';
 
 export default function AICoach() {
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
   const { t, language } = useTranslation();
+  const { width: windowWidth } = useWindowDimensions();
+  const isWideScreen = windowWidth >= 768;
 
   // Zustand
   const { chatMessages, sendChatMessage, clearChat, isChatLoading } = useFinanceStore();
 
   const [inputVal, setInputVal] = useState('');
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const suggestedPrompts = language === 'ne'
@@ -62,21 +67,43 @@ export default function AICoach() {
     sendChatMessage(prompt);
   };
 
+  const handleConfirmClear = () => {
+    clearChat();
+    setShowClearConfirm(false);
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       
+      {/* Clear Chat Confirmation Modal */}
+      <FeedbackModal
+        visible={showClearConfirm}
+        type="confirm"
+        title="Clear Conversation?"
+        message="Are you sure you want to reset this chat session with AI Coach?"
+        confirmLabel="Clear"
+        cancelLabel="Cancel"
+        isDestructive={true}
+        onConfirm={handleConfirmClear}
+        onCancel={() => setShowClearConfirm(false)}
+      />
+
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <View style={styles.headerTitleRow}>
-          <BrainCircuit color={colors.accent} size={22} style={styles.headerIcon} />
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('ai.title')}</Text>
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
+        <View style={styles.headerInner}>
+          <View style={styles.headerTitleRow}>
+            <BrainCircuit color={colors.accent} size={22} style={styles.headerIcon} />
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{t('ai.title')}</Text>
+          </View>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Clear Chat"
+            activeOpacity={0.7}
+            onPress={() => setShowClearConfirm(true)}
+            style={[styles.clearBtn, { backgroundColor: colors.backgroundElement }]}>
+            <Trash2 color={colors.danger} size={15} />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={clearChat}
-          style={[styles.clearBtn, { backgroundColor: colors.backgroundElement }]}>
-          <Trash2 color={colors.danger} size={15} />
-        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView
@@ -91,109 +118,125 @@ export default function AICoach() {
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}>
           
-          {/* Welcome Panel */}
-          {chatMessages.length <= 1 && (
-            <Card style={[styles.welcomeCard, { backgroundColor: colors.backgroundElement }]}>
-              <View style={[styles.sparkleCircle, { backgroundColor: `${colors.accent}15` }]}>
-                <Sparkles color={colors.accent} size={26} />
-              </View>
-              <Text style={[styles.welcomeTitle, { color: colors.text }]}>{t('ai.welcomeTitle')}</Text>
-              <Text style={[styles.welcomeDesc, { color: colors.textSecondary }]}>
-                {t('ai.welcomeDesc')}
-              </Text>
-            </Card>
-          )}
-
-          {/* Quick Actions Suggestions */}
-          {chatMessages.length <= 1 && (
-            <View style={styles.suggestionsContainer}>
-              <Text style={[styles.suggestionLabel, { color: colors.textSecondary }]}>
-                {t('ai.tapToAsk')}
-              </Text>
-              <View style={styles.suggestionsGrid}>
-                {suggestedPrompts.map((p, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    activeOpacity={0.7}
-                    onPress={() => handleSuggestionPress(p)}
-                    style={[styles.suggestionChip, { borderColor: colors.border, backgroundColor: colors.card }]}>
-                    <Text numberOfLines={1} style={[styles.suggestionText, { color: colors.text }]}>
-                      {p}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Messages History */}
-          <View style={styles.messagesList}>
-            {chatMessages.map((msg) => {
-              const isAI = msg.sender === 'ai';
-              return (
-                <View
-                  key={msg.id}
-                  style={[
-                    styles.messageRow,
-                    isAI ? styles.rowLeft : styles.rowRight,
-                  ]}>
-                  
-                  {isAI && <Text style={styles.aiAvatarEmoji}>🤖</Text>}
-
-                  <View
-                    style={[
-                      styles.messageBubble,
-                      isAI
-                        ? [styles.bubbleLeft, { backgroundColor: colors.card, borderColor: colors.border }]
-                        : [styles.bubbleRight, { backgroundColor: colors.text }],
-                    ]}>
-                    <Text
-                      style={[
-                        styles.messageTextContent,
-                        { color: isAI ? colors.text : colors.background },
-                      ]}>
-                      {msg.text}
-                    </Text>
-                  </View>
+          <View style={[styles.responsiveContainer, isWideScreen && styles.responsiveContainerWide]}>
+            {/* Welcome Panel */}
+            {chatMessages.length <= 1 && (
+              <Card style={[styles.welcomeCard, { backgroundColor: colors.backgroundElement, borderColor: colors.border }]}>
+                <View style={[styles.sparkleCircle, { backgroundColor: `${colors.accent}15` }]}>
+                  <Sparkles color={colors.accent} size={26} />
                 </View>
-              );
-            })}
+                <Text style={[styles.welcomeTitle, { color: colors.text }]}>{t('ai.welcomeTitle')}</Text>
+                <Text style={[styles.welcomeDesc, { color: colors.textSecondary }]}>
+                  {t('ai.welcomeDesc')}
+                </Text>
+              </Card>
+            )}
 
-            {/* Simulated AI Typing indicator */}
-            {isChatLoading && (
-              <View style={[styles.messageRow, styles.rowLeft]}>
-                <Text style={styles.aiAvatarEmoji}>🤖</Text>
-                <View style={[styles.messageBubble, styles.bubbleLeft, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  <ActivityIndicator size="small" color={colors.accent} />
+            {/* Quick Actions Suggestions */}
+            {chatMessages.length <= 1 && (
+              <View style={styles.suggestionsContainer}>
+                <Text style={[styles.suggestionLabel, { color: colors.textSecondary }]}>
+                  {t('ai.tapToAsk')}
+                </Text>
+                <View style={styles.suggestionsGrid}>
+                  {suggestedPrompts.map((p, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      activeOpacity={0.7}
+                      onPress={() => handleSuggestionPress(p)}
+                      style={[styles.suggestionChip, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                      <Text numberOfLines={1} style={[styles.suggestionText, { color: colors.text }]}>
+                        {p}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
               </View>
             )}
+
+            {/* Messages History */}
+            <View style={styles.messagesList}>
+              {chatMessages.map((msg) => {
+                const isAI = msg.sender === 'ai';
+                return (
+                  <View
+                    key={msg.id}
+                    style={[
+                      styles.messageRow,
+                      isAI ? styles.rowLeft : styles.rowRight,
+                    ]}>
+                    
+                    {isAI ? (
+                      <View style={[styles.avatarWrap, { backgroundColor: `${colors.accent}18` }]}>
+                        <Bot size={16} color={colors.accent} />
+                      </View>
+                    ) : null}
+
+                    <View
+                      style={[
+                        styles.messageBubble,
+                        isAI
+                          ? [styles.bubbleLeft, { backgroundColor: colors.card, borderColor: colors.border }]
+                          : [styles.bubbleRight, { backgroundColor: colors.text }],
+                      ]}>
+                      <Text
+                        style={[
+                          styles.messageTextContent,
+                          { color: isAI ? colors.text : colors.background },
+                        ]}>
+                        {msg.text}
+                      </Text>
+                    </View>
+
+                    {!isAI ? (
+                      <View style={[styles.avatarWrap, { backgroundColor: colors.text }]}>
+                        <User size={14} color={colors.background} />
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })}
+
+              {/* Simulated AI Typing indicator */}
+              {isChatLoading && (
+                <View style={[styles.messageRow, styles.rowLeft]}>
+                  <View style={[styles.avatarWrap, { backgroundColor: `${colors.accent}18` }]}>
+                    <Bot size={16} color={colors.accent} />
+                  </View>
+                  <View style={[styles.messageBubble, styles.bubbleLeft, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <ActivityIndicator size="small" color={colors.accent} />
+                  </View>
+                </View>
+              )}
+            </View>
           </View>
         </ScrollView>
 
         {/* Text Input footer row */}
         <View style={[styles.inputRow, { borderTopColor: colors.border, backgroundColor: colors.card }]}>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                color: colors.text,
-                borderColor: colors.border,
-                backgroundColor: colors.background,
-              },
-            ]}
-            placeholder={t('ai.placeholder')}
-            placeholderTextColor={colors.textSecondary}
-            value={inputVal}
-            onChangeText={setInputVal}
-            onSubmitEditing={handleSend}
-          />
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={handleSend}
-            style={[styles.sendBtn, { backgroundColor: colors.text }]}>
-            <Send color={colors.background} size={16} />
-          </TouchableOpacity>
+          <View style={styles.inputRowInner}>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  color: isDark ? '#F8FAFC' : '#0F172A',
+                  borderColor: isDark ? '#334155' : '#CBD5E1',
+                  backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                },
+              ]}
+              placeholder={t('ai.placeholder')}
+              placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
+              value={inputVal}
+              onChangeText={setInputVal}
+              onSubmitEditing={handleSend}
+            />
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={handleSend}
+              style={[styles.sendBtn, { backgroundColor: colors.text }]}>
+              <Send color={colors.background} size={16} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Disclaimer banner */}
@@ -212,12 +255,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    height: 56,
+    borderBottomWidth: 1,
+    paddingVertical: Spacing.two,
+  },
+  headerInner: {
+    height: 48,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.four,
-    borderBottomWidth: 1,
+    maxWidth: 1000,
+    width: '100%',
+    alignSelf: 'center',
   },
   headerTitleRow: {
     flexDirection: 'row',
@@ -229,11 +278,12 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...Typography.h3,
+    fontSize: 18,
     fontWeight: '800',
   },
   clearBtn: {
-    width: 32,
-    height: 32,
+    width: 34,
+    height: 34,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
@@ -243,12 +293,20 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.four,
-    paddingBottom: Spacing.four,
+    alignItems: 'center',
+  },
+  responsiveContainer: {
+    width: '100%',
+    maxWidth: 1000,
+  },
+  responsiveContainerWide: {
+    paddingHorizontal: Spacing.two,
   },
   welcomeCard: {
     padding: Spacing.four,
     alignItems: 'center',
-    borderWidth: 0,
+    borderWidth: 1,
+    borderRadius: 16,
     marginBottom: Spacing.four,
   },
   sparkleCircle: {
@@ -267,7 +325,7 @@ const styles = StyleSheet.create({
   },
   welcomeDesc: {
     ...Typography.bodySmall,
-    fontSize: 12,
+    fontSize: 12.5,
     textAlign: 'center',
     lineHeight: 18,
     paddingHorizontal: Spacing.two,
@@ -304,6 +362,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     marginVertical: 4,
+    gap: 8,
   },
   rowLeft: {
     justifyContent: 'flex-start',
@@ -314,15 +373,20 @@ const styles = StyleSheet.create({
     paddingLeft: Spacing.six,
     marginLeft: 'auto',
   },
-  aiAvatarEmoji: {
-    fontSize: 20,
-    marginRight: Spacing.two,
+  avatarWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 2,
   },
   messageBubble: {
     borderRadius: 16,
     paddingVertical: Spacing.two * 1.2,
     paddingHorizontal: Spacing.three,
+    flexShrink: 1,
+    maxWidth: 600,
   },
   bubbleLeft: {
     borderWidth: 1,
@@ -337,16 +401,21 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   inputRow: {
+    borderTopWidth: 1,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.four,
+    alignItems: 'center',
+  },
+  inputRowInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
-    borderTopWidth: 1,
+    maxWidth: 1000,
+    width: '100%',
   },
   input: {
     flex: 1,
-    borderWidth: 1,
-    borderRadius: 20,
+    borderWidth: 1.5,
+    borderRadius: 22,
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.four,
     ...Typography.body,
@@ -354,15 +423,15 @@ const styles = StyleSheet.create({
     marginRight: Spacing.two,
   },
   sendBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
   disclaimerBox: {
     paddingHorizontal: Spacing.four,
-    paddingBottom: Spacing.three,
+    paddingBottom: Spacing.two,
     alignItems: 'center',
   },
   disclaimerText: {

@@ -18,6 +18,10 @@ export const Colors = {
     accent: '#0284C7', // Sky 600
     card: '#FFFFFF',
     border: '#E2E8F0',
+    inputBackground: '#FFFFFF',
+    inputText: '#0F172A',
+    inputPlaceholder: '#64748B',
+    inputBorder: '#CBD5E1',
     success: '#10B981', // Emerald 500
     warning: '#F59E0B', // Amber 500
     danger: '#EF4444', // Red 500
@@ -34,6 +38,10 @@ export const Colors = {
     accent: '#0EA5E9', // Sky 500
     card: '#111827', // Gray 900
     border: '#1E293B', // Slate 800
+    inputBackground: '#1E293B', // High contrast input background
+    inputText: '#F8FAFC', // Crisp white text in dark mode
+    inputPlaceholder: '#94A3B8', // Light slate placeholder
+    inputBorder: '#334155', // Slate 700
     success: '#34D399', // Emerald 400
     warning: '#FBBF24', // Amber 400
     danger: '#F87171', // Red 400

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   SafeAreaView,
   TextInput,
-  useColorScheme,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
@@ -15,26 +14,31 @@ import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { Eye, EyeOff, Shield, Sparkles, AlertCircle } from 'lucide-react-native';
 import { useFinanceStore } from '../../store/useFinanceStore';
-import { Colors, Spacing } from '../../constants/theme';
+import { Spacing } from '../../constants/theme';
+import Typography from '../../constants/Typography';
+import { useAppTheme } from '../../hooks/useAppTheme';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(1, 'Please enter your password'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const router = useRouter();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' || !scheme ? 'light' : scheme];
+  const { colors, isDark } = useAppTheme();
   
+  const loginUser = useFinanceStore((state) => state.loginUser);
   const loginDemo = useFinanceStore((state) => state.loginDemo);
+  
   const [loading, setLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     control,
@@ -52,20 +56,12 @@ export default function Login() {
     setLoading(true);
     setAuthError(null);
     try {
-      // Simulate authentication check
-      setTimeout(() => {
-        setLoading(false);
-        if (data.email.toLowerCase() === 'demo@finhub.com') {
-          loginDemo();
-          router.replace('/(tabs)/home');
-        } else {
-          // New simulated user signup or login
-          setAuthError('Authentication failed. Use demo@finhub.com or click "Continue with Demo".');
-        }
-      }, 1000);
-    } catch (err) {
+      await loginUser(data.email, data.password);
       setLoading(false);
-      setAuthError('An error occurred during authentication.');
+      router.replace('/(tabs)/home');
+    } catch (err: any) {
+      setLoading(false);
+      setAuthError(err.message || 'Authentication failed. Please check your credentials or click "Continue with Demo".');
     }
   };
 
@@ -75,31 +71,37 @@ export default function Login() {
       loginDemo();
       setLoading(false);
       router.replace('/(tabs)/home');
-    }, 500);
+    }, 300);
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
           {/* Logo Brand Header */}
           <View style={styles.brandHeader}>
-            <Text style={[styles.logoText, { color: colors.text }]}>FINHUB</Text>
-            <Text style={[styles.logoTextHighlight, { color: colors.accent }]}>NEPAL</Text>
+            <View style={[styles.brandIconWrapper, { backgroundColor: `${colors.accent}18` }]}>
+              <Shield color={colors.accent} size={32} />
+            </View>
+            <View style={styles.brandTitleRow}>
+              <Text style={[styles.logoText, { color: colors.text }]}>FINHUB</Text>
+              <Text style={[styles.logoTextHighlight, { color: colors.accent }]}>NEPAL</Text>
+            </View>
             <Text style={[styles.tagline, { color: colors.textSecondary }]}>
-              One Dashboard. Every Investment. Every Goal.
+              Unified Wealth, SIP, and Goal Intelligence
             </Text>
           </View>
 
           {/* Login Card */}
-          <Card style={styles.card}>
+          <Card style={[styles.card, { borderColor: colors.border, backgroundColor: colors.card }]}>
             <Text style={[styles.loginTitle, { color: colors.text }]}>Sign In</Text>
 
             {authError && (
-              <View style={[styles.errorBox, { backgroundColor: `${colors.danger}15` }]}>
+              <View style={[styles.errorBox, { backgroundColor: `${colors.danger}15`, borderColor: colors.danger }]}>
+                <AlertCircle color={colors.danger} size={16} />
                 <Text style={[styles.errorBoxText, { color: colors.danger }]}>{authError}</Text>
               </View>
             )}
@@ -115,13 +117,14 @@ export default function Login() {
                     style={[
                       styles.input,
                       {
-                        color: colors.text,
-                        borderColor: errors.email ? colors.danger : colors.border,
-                        backgroundColor: colors.background,
+                        color: isDark ? '#F8FAFC' : '#0F172A',
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                        borderColor: errors.email ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
                       },
                     ]}
                     placeholder="e.g. demo@finhub.com"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
+                    selectionColor={colors.accent}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
@@ -135,7 +138,7 @@ export default function Login() {
               )}
             </View>
 
-            {/* Password Input */}
+            {/* Password Input with Eye Visibility Toggle */}
             <View style={styles.inputGroup}>
               <View style={styles.passwordHeader}>
                 <Text style={[styles.label, { color: colors.textSecondary }]}>Password</Text>
@@ -147,22 +150,37 @@ export default function Login() {
                 control={control}
                 name="password"
                 render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    style={[
-                      styles.input,
-                      {
-                        color: colors.text,
-                        borderColor: errors.password ? colors.danger : colors.border,
-                        backgroundColor: colors.background,
-                      },
-                    ]}
-                    placeholder="Enter password"
-                    placeholderTextColor={colors.textSecondary}
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    value={value}
-                    secureTextEntry
-                  />
+                  <View style={styles.passwordWrapper}>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        styles.passwordInput,
+                        {
+                          color: isDark ? '#F8FAFC' : '#0F172A',
+                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                          borderColor: errors.password ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
+                        },
+                      ]}
+                      placeholder="Enter password"
+                      placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
+                      selectionColor={colors.accent}
+                      onBlur={onBlur}
+                      onChangeText={onChange}
+                      value={value}
+                      secureTextEntry={!showPassword}
+                    />
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                      onPress={() => setShowPassword(!showPassword)}
+                      style={styles.eyeToggleBtn}>
+                      {showPassword ? (
+                        <EyeOff color={colors.textSecondary} size={18} />
+                      ) : (
+                        <Eye color={colors.textSecondary} size={18} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
                 )}
               />
               {errors.password && (
@@ -203,6 +221,7 @@ export default function Login() {
             </TouchableOpacity>
           </View>
 
+          <View style={styles.bottomSpacer} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -220,53 +239,74 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: Spacing.four,
+    maxWidth: 460,
+    width: '100%',
+    alignSelf: 'center',
   },
   brandHeader: {
     alignItems: 'center',
-    marginBottom: Spacing.five,
+    marginBottom: Spacing.four,
+  },
+  brandIconWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.two,
+  },
+  brandTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   logoText: {
-    fontSize: 34,
+    fontSize: 26,
     fontWeight: '800',
-    letterSpacing: 2,
+    letterSpacing: 1.5,
   },
   logoTextHighlight: {
-    fontSize: 34,
+    fontSize: 26,
     fontWeight: '800',
-    letterSpacing: 2,
-    marginTop: -4,
+    letterSpacing: 1.5,
   },
   tagline: {
     fontSize: 13,
     fontWeight: '500',
-    marginTop: Spacing.two,
+    marginTop: Spacing.one,
     textAlign: 'center',
   },
   card: {
     padding: Spacing.four,
+    borderWidth: 1,
+    borderRadius: 18,
   },
   loginTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     marginBottom: Spacing.four,
   },
   errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
     padding: Spacing.two * 1.5,
     borderRadius: 8,
+    borderWidth: 1,
     marginBottom: Spacing.three,
   },
   errorBoxText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '600',
-    textAlign: 'center',
+    flex: 1,
   },
   inputGroup: {
     marginBottom: Spacing.three,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    marginBottom: Spacing.one * 1.5,
+    marginBottom: Spacing.one * 1.2,
   },
   passwordHeader: {
     flexDirection: 'row',
@@ -274,18 +314,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   forgotText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '600',
   },
+  passwordWrapper: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
   input: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: 10,
-    paddingVertical: Spacing.two * 1.5,
+    paddingVertical: Spacing.two * 1.4,
     paddingHorizontal: Spacing.three,
-    fontSize: 15,
+    fontSize: 14.5,
+  },
+  passwordInput: {
+    paddingRight: 48,
+  },
+  eyeToggleBtn: {
+    position: 'absolute',
+    right: 12,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 4,
   },
   errorText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '500',
     marginTop: Spacing.one,
   },
@@ -302,7 +357,7 @@ const styles = StyleSheet.create({
     height: 1,
   },
   dividerText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     marginHorizontal: Spacing.three,
   },
@@ -312,13 +367,16 @@ const styles = StyleSheet.create({
   signUpContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: Spacing.five,
+    marginTop: Spacing.four,
   },
   signUpLabel: {
-    fontSize: 14,
+    fontSize: 13.5,
   },
   signUpLink: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '700',
+  },
+  bottomSpacer: {
+    height: Spacing.four,
   },
 });

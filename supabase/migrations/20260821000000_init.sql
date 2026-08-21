@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS public.savings_goals (
     current_amount DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
     target_date TIMESTAMP WITH TIME ZONE NOT NULL,
     icon TEXT NOT NULL DEFAULT 'Target', -- Name of Lucide icon
+    description TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

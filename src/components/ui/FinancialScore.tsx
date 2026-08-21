@@ -22,10 +22,25 @@ export default function FinancialScore({
   const cleanScore = Math.min(100, Math.max(0, score));
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
-  const strokeDashoffset = circumference - (cleanScore / 100) * circumference;
+  const strokeDashoffset = cleanScore === 0 ? circumference : circumference - (cleanScore / 100) * circumference;
 
   // Determine Tiers
   const getTier = () => {
+    if (cleanScore === 0) {
+      if (language === 'ne') {
+        return {
+          label: 'नयाँ खाता',
+          color: colors.accent,
+          desc: 'आफ्नो वित्तीय स्वास्थ्य स्कोर हेर्न खाता वा बचत लक्ष्य जोड्नुहोस्।',
+        };
+      }
+      return {
+        label: 'Getting Started',
+        color: colors.accent,
+        desc: 'Link a bank account or add a goal to calculate your 5-pillar financial health score.',
+      };
+    }
+
     if (language === 'ne') {
       if (cleanScore >= 90) return { label: 'उत्कृष्ट', color: colors.success, desc: 'उत्कृष्ट वित्तीय स्वास्थ्य!' };
       if (cleanScore >= 75) return { label: 'राम्रो', color: colors.success, desc: 'राम्रो वित्तीय बानी।' };
@@ -57,18 +72,20 @@ export default function FinancialScore({
             fill="transparent"
           />
           {/* Progress Circle */}
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke={tier.color}
-            strokeWidth={strokeWidth}
-            fill="transparent"
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          />
+          {cleanScore > 0 && (
+            <Circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              stroke={tier.color}
+              strokeWidth={strokeWidth}
+              fill="transparent"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            />
+          )}
         </Svg>
 
         {/* Center Content */}
@@ -128,5 +145,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: Spacing.two,
     paddingHorizontal: Spacing.three,
+    lineHeight: 18,
   },
 });

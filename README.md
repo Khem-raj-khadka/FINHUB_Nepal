@@ -148,5 +148,11 @@ The PostgreSQL schema (refer to `supabase/migrations/20260821000000_init.sql`) i
 - **`financial_scores`:** Logs historical metrics for score breakdowns.
 - **`notifications`:** Tracks inbox alerts for payment schedules or milestones.
 All tables enforce **Row Level Security (RLS)** ensuring users only query rows belonging to their own `auth.uid() = user_id`.
-#   F I N H U B _ N e p a l  
- 
+
+---
+
+## 9. Contributors
+
+- **Shreeyan Dangi** ([@shreeyan12](https://github.com/shreeyan12))
+- **Khem Raj Khadka** ([@Khem-raj-khadka](https://github.com/Khem-raj-khadka))
+- **Sashwot Khadgi** ([@0rdinary-guy](https://github.com/0rdinary-guy))

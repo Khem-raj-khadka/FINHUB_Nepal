@@ -1,4 +1,4 @@
-import { FinancialAccount, Transaction, Investment, SavingsGoal, FinancialScore } from '../types';
+import { FinancialAccount, Transaction, Investment, SavingsGoal, FinancialScore } from '../types/index';
 
 /**
  * Net Worth = Total Assets - Total Liabilities
@@ -8,7 +8,7 @@ import { FinancialAccount, Transaction, Investment, SavingsGoal, FinancialScore 
 export function calculateNetWorth(
   accounts: FinancialAccount[],
   investments: Investment[],
-  defaultLiabilities: number = 255000
+  liabilities: number = 0
 ) {
   const assetsAccounts = accounts
     .filter((a) => a.isConnected && a.balance > 0)
@@ -23,7 +23,7 @@ export function calculateNetWorth(
   );
 
   const totalAssets = assetsAccounts + assetsInvestments;
-  const totalLiabilities = liabilitiesAccounts + defaultLiabilities;
+  const totalLiabilities = liabilitiesAccounts + liabilities;
   const netWorth = totalAssets - totalLiabilities;
 
   return {
@@ -138,42 +138,70 @@ export function calculateFinancialHealthScore(
   transactions: Transaction[],
   investments: Investment[],
   goals: SavingsGoal[],
-  defaultLiabilities: number = 255000
+  liabilities: number = 0
 ): FinancialScore {
-  const { totalAssets, totalLiabilities } = calculateNetWorth(accounts, investments, defaultLiabilities);
+  // If no data exists at all (brand new user), score is 0 across all pillars
+  const hasAccounts = accounts.length > 0;
+  const hasTransactions = transactions.length > 0;
+  const hasInvestments = investments.length > 0;
+  const hasGoals = goals.length > 0;
+
+  if (!hasAccounts && !hasTransactions && !hasInvestments && !hasGoals) {
+    return {
+      id: `score-${Date.now()}`,
+      userId: accounts[0]?.userId || 'user',
+      totalScore: 0,
+      emergencyScore: 0,
+      savingsScore: 0,
+      investmentScore: 0,
+      debtScore: 0,
+      spendingScore: 0,
+      calculatedAt: new Date().toISOString(),
+    };
+  }
+
+  const { totalAssets, totalLiabilities } = calculateNetWorth(accounts, investments, liabilities);
   const { income, expenses, rate: savingsRate } = calculateSavingsRate(transactions);
 
   // Pillar 1: Emergency Fund (Max 20 pts)
-  // Look for goal named 'Emergency Fund' or similar. Compare saved amount vs target.
   const emergencyGoal = goals.find((g) => g.name.toLowerCase().includes('emergency'));
   let emergencyScore = 0;
   if (emergencyGoal) {
     const progress = calculateGoalProgress(emergencyGoal.currentAmount, emergencyGoal.targetAmount);
     emergencyScore = Math.round((progress / 100) * 20);
   } else {
-    // If no emergency goal, score based on cash relative to monthly expenses
-    const cash = accounts.reduce((sum, a) => sum + a.balance, 0);
-    const monthsCovered = expenses > 0 ? cash / expenses : 6; // Assume 6 if no expenses
-    emergencyScore = Math.min(20, Math.round((monthsCovered / 6) * 20));
+    const cash = accounts.reduce((sum, a) => sum + Math.max(0, a.balance), 0);
+    if (expenses > 0) {
+      const monthsCovered = cash / expenses;
+      emergencyScore = Math.min(20, Math.round((monthsCovered / 6) * 20));
+    } else if (cash > 0) {
+      emergencyScore = 15;
+    } else {
+      emergencyScore = 0;
+    }
   }
 
   // Pillar 2: Savings Habit (Max 20 pts)
-  // Points proportional to savings rate (ideal is >= 30%)
   let savingsScore = 0;
-  if (savingsRate >= 30) {
-    savingsScore = 20;
-  } else if (savingsRate >= 20) {
-    savingsScore = 16;
-  } else if (savingsRate >= 10) {
+  if (income > 0) {
+    if (savingsRate >= 30) {
+      savingsScore = 20;
+    } else if (savingsRate >= 20) {
+      savingsScore = 16;
+    } else if (savingsRate >= 10) {
+      savingsScore = 10;
+    } else if (savingsRate >= 5) {
+      savingsScore = 6;
+    } else {
+      savingsScore = 2;
+    }
+  } else if (hasGoals && goals.some(g => g.currentAmount > 0)) {
     savingsScore = 10;
-  } else if (savingsRate >= 5) {
-    savingsScore = 6;
   } else {
-    savingsScore = 2;
+    savingsScore = 0;
   }
 
   // Pillar 3: Investment Consistency (Max 20 pts)
-  // Score based on active SIPs and investment portfolio diversity
   const activeSips = investments.filter((i) => i.investmentType === 'SIP' && i.status !== 'Paused' && i.status !== 'Completed').length;
   let investmentScore = 0;
   if (activeSips >= 3) {
@@ -182,15 +210,14 @@ export function calculateFinancialHealthScore(
     investmentScore = 16;
   } else if (activeSips === 1) {
     investmentScore = 12;
+  } else if (investments.length > 0) {
+    investmentScore = 8;
   } else {
-    // Check if they have other investments (e.g. Stocks)
-    const hasInvestments = investments.length > 0;
-    investmentScore = hasInvestments ? 8 : 2;
+    investmentScore = 0;
   }
 
   // Pillar 4: Debt Management (Max 20 pts)
-  // Debt-to-Asset ratio. 0 is ideal. Ratio > 0.5 is critical.
-  let debtScore = 20;
+  let debtScore = 0;
   if (totalAssets > 0) {
     const debtRatio = totalLiabilities / totalAssets;
     if (debtRatio === 0) debtScore = 20;
@@ -199,11 +226,14 @@ export function calculateFinancialHealthScore(
     else if (debtRatio <= 0.5) debtScore = 10;
     else if (debtRatio <= 0.75) debtScore = 5;
     else debtScore = 1;
+  } else if (totalLiabilities > 0) {
+    debtScore = 0;
+  } else {
+    debtScore = hasAccounts ? 20 : 0;
   }
 
   // Pillar 5: Spending Control (Max 20 pts)
-  // Expense-to-Income ratio. Ideal is <= 50%. Critical is >= 90%.
-  let spendingScore = 20;
+  let spendingScore = 0;
   if (income > 0) {
     const expenseRatio = expenses / income;
     if (expenseRatio <= 0.5) spendingScore = 20;
@@ -211,15 +241,17 @@ export function calculateFinancialHealthScore(
     else if (expenseRatio <= 0.8) spendingScore = 12;
     else if (expenseRatio <= 0.9) spendingScore = 8;
     else spendingScore = 3;
+  } else if (expenses > 0) {
+    spendingScore = 5;
   } else {
-    spendingScore = expenses > 0 ? 5 : 15; // Assume moderate score if no income this month
+    spendingScore = hasAccounts ? 15 : 0;
   }
 
   const totalScore = emergencyScore + savingsScore + investmentScore + debtScore + spendingScore;
 
   return {
     id: `score-${Date.now()}`,
-    userId: accounts[0]?.userId || 'demo-user-123',
+    userId: accounts[0]?.userId || 'user',
     totalScore: Math.min(100, Math.max(0, totalScore)),
     emergencyScore,
     savingsScore,
@@ -233,27 +265,30 @@ export function calculateFinancialHealthScore(
 /**
  * Calculate Smart Savings Recommendation based on 30% savings benchmark.
  */
-export function calculateSmartSavings(transactions: Transaction[], defaultIncome: number = 85000) {
+export function calculateSmartSavings(transactions: Transaction[]) {
   const { income, expenses } = calculateSavingsRate(transactions);
 
-  const activeIncome = income > 0 ? income : defaultIncome;
-  const activeExpenses = expenses > 0 ? expenses : 42500;
-  
-  const targetSavingsRate = 0.30; // 30% target savings rate
-  const targetSavings = activeIncome * targetSavingsRate;
-  const actualSavings = activeIncome - activeExpenses;
+  if (income <= 0 && expenses <= 0) {
+    return 0;
+  }
 
-  let recommendedExtra = 3500;
+  const activeIncome = income > 0 ? income : expenses * 1.5;
+  const activeExpenses = expenses;
+  
+  const targetSavingsRate = 0.30;
+  const targetSavings = activeIncome * targetSavingsRate;
+  const actualSavings = Math.max(0, activeIncome - activeExpenses);
+
+  let recommendedExtra = 0;
 
   if (actualSavings < targetSavings) {
-    // Under-saving: suggest the gap to hit the 30% mark, rounded to the nearest Rs. 500
     const gap = targetSavings - actualSavings;
-    recommendedExtra = Math.max(1000, Math.round(gap / 500) * 500);
+    recommendedExtra = Math.max(500, Math.round(gap / 500) * 500);
   } else {
-    // Over-saving: suggest saving an extra 5% of income for additional investments
     const extraSavings = activeIncome * 0.05;
-    recommendedExtra = Math.max(1500, Math.round(extraSavings / 500) * 500);
+    recommendedExtra = Math.max(500, Math.round(extraSavings / 500) * 500);
   }
 
   return recommendedExtra;
 }
+

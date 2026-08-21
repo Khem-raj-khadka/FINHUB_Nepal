@@ -1,31 +1,32 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, useColorScheme, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors, Spacing } from '../constants/theme';
+import { Building2, PieChart, TrendingUp } from 'lucide-react-native';
+import { Spacing } from '../constants/theme';
+import { useAppTheme } from '../hooks/useAppTheme';
 import Button from '../components/ui/Button';
 
 export default function Onboarding() {
   const router = useRouter();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' || !scheme ? 'light' : scheme];
+  const { colors } = useAppTheme();
   
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const slides = [
     {
       title: 'All Your Money. One Place.',
-      description: 'Track your accounts, investments, savings and financial goals from one dashboard.',
-      illustration: '🏦',
+      description: 'Track your accounts, investments, savings, and financial goals from one unified dashboard.',
+      icon: (color: string) => <Building2 size={72} color={color} />,
     },
     {
       title: 'Understand Your Financial Health.',
-      description: 'See your financial score, spending patterns and smart insights.',
-      illustration: '📊',
+      description: 'See your financial score, spending patterns, and smart AI insights tailored for Nepal.',
+      icon: (color: string) => <PieChart size={72} color={color} />,
     },
     {
       title: 'Invest Smarter. Save Better.',
-      description: 'Track SIPs, investments and savings goals.',
-      illustration: '📈',
+      description: 'Manage SIP installments, track mutual funds, and achieve your milestone targets.',
+      icon: (color: string) => <TrendingUp size={72} color={color} />,
     },
   ];
 
@@ -58,7 +59,9 @@ export default function Onboarding() {
 
       {/* Illustration Area */}
       <View style={styles.illustrationContainer}>
-        <Text style={styles.emojiIllustration}>{activeSlide.illustration}</Text>
+        <View style={[styles.iconCircle, { backgroundColor: `${colors.accent}15`, borderColor: `${colors.accent}30` }]}>
+          {activeSlide.icon(colors.accent)}
+        </View>
       </View>
 
       {/* Content Area */}
@@ -77,8 +80,8 @@ export default function Onboarding() {
               style={[
                 styles.dot,
                 {
-                  backgroundColor: i === currentSlide ? colors.accent : colors.backgroundSelected,
-                  width: i === currentSlide ? 20 : 8,
+                  backgroundColor: i === currentSlide ? colors.accent : colors.backgroundElement,
+                  width: i === currentSlide ? 24 : 8,
                 },
               ]}
             />
@@ -110,7 +113,7 @@ const styles = StyleSheet.create({
     padding: Spacing.two,
   },
   skipText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
   },
   skipPlaceholder: {
@@ -121,32 +124,42 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  emojiIllustration: {
-    fontSize: 100,
+  iconCircle: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
   },
   contentContainer: {
     flex: 1,
     paddingHorizontal: Spacing.four * 1.5,
     justifyContent: 'center',
     alignItems: 'center',
+    maxWidth: 500,
+    alignSelf: 'center',
   },
   title: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: Spacing.three,
-    lineHeight: 34,
+    lineHeight: 32,
   },
   description: {
-    fontSize: 16,
+    fontSize: 15,
     textAlign: 'center',
-    lineHeight: 24,
-    paddingHorizontal: Spacing.three,
+    lineHeight: 22,
+    paddingHorizontal: Spacing.two,
   },
   footer: {
     paddingHorizontal: Spacing.four * 1.5,
     paddingBottom: Spacing.five,
     alignItems: 'center',
+    maxWidth: 440,
+    width: '100%',
+    alignSelf: 'center',
   },
   dotsContainer: {
     flexDirection: 'row',

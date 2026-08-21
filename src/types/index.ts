@@ -74,6 +74,7 @@ export interface SavingsGoal {
   currentAmount: number;
   targetDate: string;
   icon: string; // Name of Lucide icon
+  description?: string;
   createdAt: string;
 }
 
