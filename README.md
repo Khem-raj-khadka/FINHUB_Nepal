@@ -156,5 +156,5 @@ All tables enforce **Row Level Security (RLS)** ensuring users only query rows b
 - **Shreeyan Dangi** ([@shreeyan12](https://github.com/shreeyan12))
 - **Khem Raj Khadka** ([@Khem-raj-khadka](https://github.com/Khem-raj-khadka))
 - **Sashwot Khadgi** ([@0rdinary-guy](https://github.com/0rdinary-guy))
-- **Shekhar Rai** ([@Shekharrao-456](https://github.com/Shekharrai-456))
+- **Shekhar Rai** ([@Shekharrai-456](https://github.com/Shekharrai-456))
   
