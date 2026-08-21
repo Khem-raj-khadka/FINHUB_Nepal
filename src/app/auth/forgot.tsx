@@ -5,7 +5,6 @@ import {
   StyleSheet,
   SafeAreaView,
   TextInput,
-  useColorScheme,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
@@ -14,7 +13,8 @@ import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Colors, Spacing } from '../../constants/theme';
+import { Spacing } from '../../constants/theme';
+import { useAppTheme } from '../../hooks/useAppTheme';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 
@@ -26,8 +26,7 @@ type ForgotFormData = z.infer<typeof forgotSchema>;
 
 export default function ForgotPassword() {
   const router = useRouter();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' || !scheme ? 'light' : scheme];
+  const { colors } = useAppTheme();
 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -61,7 +60,7 @@ export default function ForgotPassword() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}>
         <View style={styles.content}>
-          <Card style={styles.card}>
+          <Card style={[styles.card, { borderColor: colors.border, backgroundColor: colors.card }]}>
             <Text style={[styles.title, { color: colors.text }]}>Reset Password</Text>
             
             {success ? (
@@ -94,13 +93,13 @@ export default function ForgotPassword() {
                         style={[
                           styles.input,
                           {
-                            color: colors.text,
-                            borderColor: errors.email ? colors.danger : colors.border,
-                            backgroundColor: colors.background,
+                            color: colors.inputText,
+                            borderColor: errors.email ? colors.danger : colors.inputBorder,
+                            backgroundColor: colors.inputBackground,
                           },
                         ]}
                         placeholder="e.g. yourname@example.com"
-                        placeholderTextColor={colors.textSecondary}
+                        placeholderTextColor={colors.inputPlaceholder}
                         onBlur={onBlur}
                         onChangeText={onChange}
                         value={value}
@@ -149,12 +148,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: Spacing.four,
-    maxWidth: 460,
+    maxWidth: 480,
     width: '100%',
     alignSelf: 'center',
   },
   card: {
     padding: Spacing.four,
+    borderWidth: 1,
+    borderRadius: 16,
   },
   title: {
     fontSize: 22,
@@ -175,7 +176,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.one * 1.5,
   },
   input: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: 10,
     paddingVertical: Spacing.two * 1.5,
     paddingHorizontal: Spacing.three,

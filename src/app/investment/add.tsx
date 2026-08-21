@@ -6,7 +6,6 @@ import {
   SafeAreaView,
   ScrollView,
   TextInput,
-  useColorScheme,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
@@ -16,7 +15,8 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useFinanceStore } from '../../store/useFinanceStore';
-import { Colors, Spacing } from '../../constants/theme';
+import { Spacing } from '../../constants/theme';
+import { useAppTheme } from '../../hooks/useAppTheme';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import { InvestmentCategory } from '../../types';
@@ -35,8 +35,7 @@ type InvestmentFormData = z.infer<typeof investmentSchema>;
 
 export default function AddInvestment() {
   const router = useRouter();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' || !scheme ? 'light' : scheme];
+  const { colors } = useAppTheme();
 
   // Zustand
   const { addInvestment } = useFinanceStore();
@@ -76,7 +75,7 @@ export default function AddInvestment() {
         );
         setLoading(false);
         router.replace('/(tabs)/investments');
-      }, 1000);
+      }, 600);
     } catch (err) {
       setLoading(false);
     }
@@ -89,7 +88,7 @@ export default function AddInvestment() {
         style={styles.keyboardView}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
-          <Card style={styles.card}>
+          <Card style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {/* Category selection */}
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.textSecondary }]}>Asset Category</Text>
@@ -100,7 +99,7 @@ export default function AddInvestment() {
                     onPress={() => setValue('category', cat)}
                     style={[
                       styles.catChip,
-                      { borderColor: colors.border },
+                      { borderColor: colors.border, backgroundColor: colors.backgroundElement },
                       selectedCategory === cat && {
                         backgroundColor: colors.text,
                         borderColor: colors.text,
@@ -109,7 +108,7 @@ export default function AddInvestment() {
                     <Text
                       style={[
                         styles.catChipText,
-                        { color: selectedCategory === cat ? colors.background : colors.textSecondary },
+                        { color: selectedCategory === cat ? colors.background : colors.text },
                       ]}>
                       {cat}
                     </Text>
@@ -130,10 +129,14 @@ export default function AddInvestment() {
                   <TextInput
                     style={[
                       styles.input,
-                      { color: colors.text, borderColor: errors.name ? colors.danger : colors.border },
+                      {
+                        color: colors.inputText,
+                        borderColor: errors.name ? colors.danger : colors.inputBorder,
+                        backgroundColor: colors.inputBackground,
+                      },
                     ]}
                     placeholder={selectedCategory === 'Stock' ? 'e.g. NABIL or NMB' : 'e.g. Nabil Flexi Cap Fund'}
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.inputPlaceholder}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
@@ -157,10 +160,14 @@ export default function AddInvestment() {
                     <TextInput
                       style={[
                         styles.input,
-                        { color: colors.text, borderColor: errors.quantity ? colors.danger : colors.border },
+                        {
+                          color: colors.inputText,
+                          borderColor: errors.quantity ? colors.danger : colors.inputBorder,
+                          backgroundColor: colors.inputBackground,
+                        },
                       ]}
                       placeholder="e.g. 50"
-                      placeholderTextColor={colors.textSecondary}
+                      placeholderTextColor={colors.inputPlaceholder}
                       keyboardType="numeric"
                       onBlur={onBlur}
                       onChangeText={(text) => onChange(Number(text) || 0)}
@@ -188,10 +195,14 @@ export default function AddInvestment() {
                   <TextInput
                     style={[
                       styles.input,
-                      { color: colors.text, borderColor: errors.purchaseValue ? colors.danger : colors.border },
+                      {
+                        color: colors.inputText,
+                        borderColor: errors.purchaseValue ? colors.danger : colors.inputBorder,
+                        backgroundColor: colors.inputBackground,
+                      },
                     ]}
                     placeholder="e.g. 25000"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.inputPlaceholder}
                     keyboardType="numeric"
                     onBlur={onBlur}
                     onChangeText={(text) => onChange(Number(text) || 0)}
@@ -216,10 +227,14 @@ export default function AddInvestment() {
                   <TextInput
                     style={[
                       styles.input,
-                      { color: colors.text, borderColor: errors.currentValue ? colors.danger : colors.border },
+                      {
+                        color: colors.inputText,
+                        borderColor: errors.currentValue ? colors.danger : colors.inputBorder,
+                        backgroundColor: colors.inputBackground,
+                      },
                     ]}
                     placeholder="e.g. 28500"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.inputPlaceholder}
                     keyboardType="numeric"
                     onBlur={onBlur}
                     onChangeText={(text) => onChange(Number(text) || 0)}
@@ -246,12 +261,13 @@ export default function AddInvestment() {
                       style={[
                         styles.input,
                         {
-                          color: colors.text,
-                          borderColor: errors.monthlyContribution ? colors.danger : colors.border,
+                          color: colors.inputText,
+                          borderColor: errors.monthlyContribution ? colors.danger : colors.inputBorder,
+                          backgroundColor: colors.inputBackground,
                         },
                       ]}
                       placeholder="e.g. 5000"
-                      placeholderTextColor={colors.textSecondary}
+                      placeholderTextColor={colors.inputPlaceholder}
                       keyboardType="numeric"
                       onBlur={onBlur}
                       onChangeText={(text) => onChange(Number(text) || 0)}
@@ -298,6 +314,8 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: Spacing.four,
+    borderWidth: 1,
+    borderRadius: 16,
   },
   inputGroup: {
     marginBottom: Spacing.four,
@@ -323,7 +341,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   input: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: 10,
     paddingVertical: Spacing.two * 1.5,
     paddingHorizontal: Spacing.three,

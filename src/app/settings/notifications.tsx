@@ -6,19 +6,17 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  useColorScheme,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Bell, Trash2, CheckCircle2, ChevronLeft, Info, Calendar, Target, AlertTriangle } from 'lucide-react-native';
+import { Bell, Trash2, CheckCircle2, Info, Calendar, Target, AlertTriangle } from 'lucide-react-native';
 import { useFinanceStore } from '../../store/useFinanceStore';
-import { Colors, Spacing } from '../../constants/theme';
+import { Spacing } from '../../constants/theme';
+import { useAppTheme } from '../../hooks/useAppTheme';
 import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
 
 export default function Notifications() {
   const router = useRouter();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' || !scheme ? 'light' : scheme];
+  const { colors } = useAppTheme();
 
   // Zustand
   const {
@@ -45,7 +43,7 @@ export default function Notifications() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       
       {/* Top Header controls */}
-      <View style={[styles.actionHeader, { borderBottomColor: colors.border }]}>
+      <View style={[styles.actionHeader, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
         <Text style={[styles.notifCount, { color: colors.textSecondary }]}>
           {notifications.filter((n) => !n.isRead).length} Unread
         </Text>
@@ -70,8 +68,8 @@ export default function Notifications() {
               key={notif.id}
               style={[
                 styles.notifCard,
-                { borderColor: colors.border },
-                !notif.isRead && { backgroundColor: `${colors.accent}05`, borderLeftWidth: 4, borderLeftColor: colors.accent },
+                { borderColor: colors.border, backgroundColor: colors.card },
+                !notif.isRead && { backgroundColor: `${colors.accent}08`, borderLeftWidth: 4, borderLeftColor: colors.accent },
               ]}>
               <View style={styles.notifLayout}>
                 {/* Type Icon */}
@@ -149,12 +147,13 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.four,
-    maxWidth: 680,
+    maxWidth: 780,
     width: '100%',
     alignSelf: 'center',
   },
   notifCard: {
     borderWidth: 1,
+    borderRadius: 14,
     marginVertical: Spacing.one,
     padding: Spacing.three,
   },

@@ -16,7 +16,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { useFinanceStore } from '../../store/useFinanceStore';
-import { Colors, Spacing } from '../../constants/theme';
+import { Spacing } from '../../constants/theme';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
@@ -85,7 +85,7 @@ export default function Register() {
           </View>
 
           {/* Form Card */}
-          <Card style={[styles.card, { borderColor: colors.border }]}>
+          <Card style={[styles.card, { borderColor: colors.border, backgroundColor: colors.card }]}>
             <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
 
             {error && (
@@ -105,13 +105,13 @@ export default function Register() {
                     style={[
                       styles.input,
                       {
-                        color: colors.text,
-                        borderColor: errors.fullName ? colors.danger : colors.border,
-                        backgroundColor: colors.background,
+                        color: colors.inputText,
+                        borderColor: errors.fullName ? colors.danger : colors.inputBorder,
+                        backgroundColor: colors.inputBackground,
                       },
                     ]}
                     placeholder="e.g. Khem Raj"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.inputPlaceholder}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
@@ -136,13 +136,13 @@ export default function Register() {
                     style={[
                       styles.input,
                       {
-                        color: colors.text,
-                        borderColor: errors.email ? colors.danger : colors.border,
-                        backgroundColor: colors.background,
+                        color: colors.inputText,
+                        borderColor: errors.email ? colors.danger : colors.inputBorder,
+                        backgroundColor: colors.inputBackground,
                       },
                     ]}
                     placeholder="e.g. yourname@example.com"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.inputPlaceholder}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
@@ -171,13 +171,13 @@ export default function Register() {
                         styles.input,
                         styles.passwordInput,
                         {
-                          color: colors.text,
-                          borderColor: errors.password ? colors.danger : colors.border,
-                          backgroundColor: colors.background,
+                          color: colors.inputText,
+                          borderColor: errors.password ? colors.danger : colors.inputBorder,
+                          backgroundColor: colors.inputBackground,
                         },
                       ]}
                       placeholder="Minimum 6 characters"
-                      placeholderTextColor={colors.textSecondary}
+                      placeholderTextColor={colors.inputPlaceholder}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
@@ -217,13 +217,13 @@ export default function Register() {
                         styles.input,
                         styles.passwordInput,
                         {
-                          color: colors.text,
-                          borderColor: errors.confirmPassword ? colors.danger : colors.border,
-                          backgroundColor: colors.background,
+                          color: colors.inputText,
+                          borderColor: errors.confirmPassword ? colors.danger : colors.inputBorder,
+                          backgroundColor: colors.inputBackground,
                         },
                       ]}
                       placeholder="Re-enter password"
-                      placeholderTextColor={colors.textSecondary}
+                      placeholderTextColor={colors.inputPlaceholder}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: Spacing.four,
-    maxWidth: 460,
+    maxWidth: 480,
     width: '100%',
     alignSelf: 'center',
   },
@@ -308,6 +308,8 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: Spacing.four,
+    borderWidth: 1,
+    borderRadius: 16,
   },
   title: {
     fontSize: 22,
@@ -337,7 +339,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   input: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: 10,
     paddingVertical: Spacing.two * 1.5,
     paddingHorizontal: Spacing.three,

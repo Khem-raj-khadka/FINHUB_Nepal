@@ -8,11 +8,12 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
+  useWindowDimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Trash2, Search, ArrowUpRight, ArrowDownRight, AlertTriangle, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react-native';
 import { useFinanceStore } from '../../store/useFinanceStore';
-import { Colors, Spacing } from '../../constants/theme';
+import { Spacing } from '../../constants/theme';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { useTranslation } from '../../i18n';
 import Card from '../../components/ui/Card';
@@ -25,6 +26,8 @@ export default function AccountDetails() {
   const { id } = useLocalSearchParams();
   const { colors } = useAppTheme();
   const { t } = useTranslation();
+  const { width: windowWidth } = useWindowDimensions();
+  const isWideScreen = windowWidth >= 768;
 
   // Zustand
   const { accounts, transactions, removeAccount, deleteTransaction, isBalanceHidden, currency } = useFinanceStore();
@@ -210,245 +213,257 @@ export default function AccountDetails() {
       
       {/* Account Info Header */}
       <View style={[styles.accountHeader, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        <Text style={[styles.accountLabel, { color: colors.textSecondary }]}>
-          {account.accountType} • {account.maskedAccountNumber}
-        </Text>
-        <Text style={[styles.accountBalance, { color: colors.text }]}>{fmt(account.balance)}</Text>
-        
-        {/* Account Details Grid */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCell}>
-            <View style={styles.flexRow}>
-              <ArrowUpRight color={colors.success} size={14} />
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Account Inflow</Text>
+        <View style={styles.headerInner}>
+          <Text style={[styles.accountLabel, { color: colors.textSecondary }]}>
+            {account.accountType} • {account.maskedAccountNumber}
+          </Text>
+          <Text style={[styles.accountBalance, { color: colors.text }]}>{fmt(account.balance)}</Text>
+          
+          {/* Account Details Grid */}
+          <View style={styles.statsRow}>
+            <View style={styles.statCell}>
+              <View style={styles.flexRow}>
+                <ArrowUpRight color={colors.success} size={14} />
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Account Inflow</Text>
+              </View>
+              <Text style={[styles.statVal, { color: colors.text }]}>{fmt(totalIncome)}</Text>
             </View>
-            <Text style={[styles.statVal, { color: colors.text }]}>{fmt(totalIncome)}</Text>
-          </View>
-          <View style={[styles.dividerVertical, { backgroundColor: colors.border }]} />
-          <View style={styles.statCell}>
-            <View style={styles.flexRow}>
-              <ArrowDownRight color={colors.danger} size={14} />
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Account Outflow</Text>
+            <View style={[styles.dividerVertical, { backgroundColor: colors.border }]} />
+            <View style={styles.statCell}>
+              <View style={styles.flexRow}>
+                <ArrowDownRight color={colors.danger} size={14} />
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Account Outflow</Text>
+              </View>
+              <Text style={[styles.statVal, { color: colors.text }]}>{fmt(totalExpense)}</Text>
             </View>
-            <Text style={[styles.statVal, { color: colors.text }]}>{fmt(totalExpense)}</Text>
           </View>
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
-        {/* Header Title */}
-        <View style={styles.titleRow}>
-          <Text style={[styles.historyTitle, { color: colors.text }]}>
-            Transactions ({filteredAndSortedTx.length})
-          </Text>
-        </View>
-
-        {/* Search Bar */}
-        <View style={[styles.searchBox, { borderColor: colors.border, backgroundColor: colors.card }]}>
-          <Search color={colors.textSecondary} size={16} />
-          <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search transactions by title or category..."
-            placeholderTextColor={colors.textSecondary}
-            value={searchQuery}
-            onChangeText={(t) => {
-              setSearchQuery(t);
-              setCurrentPage(1);
-            }}
-          />
-        </View>
-
-        {/* Transaction Type Filters */}
-        <View style={styles.typeFilters}>
-          {(['all', 'income', 'expense'] as const).map((type) => (
-            <TouchableOpacity
-              key={type}
-              onPress={() => {
-                setActiveType(type);
-                setCurrentPage(1);
-              }}
-              style={[
-                styles.typeTab,
-                { borderColor: colors.border },
-                activeType === type && {
-                  backgroundColor: colors.text,
-                  borderColor: colors.text,
-                },
-              ]}>
-              <Text
-                style={[
-                  styles.typeTabText,
-                  { color: activeType === type ? colors.background : colors.textSecondary },
-                ]}>
-                {type === 'all' ? 'All' : type === 'income' ? 'Income' : 'Expenses'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Category Filters Horizontal List */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesRow}>
-          {categories.map((cat) => (
-            <TouchableOpacity
-              key={cat}
-              onPress={() => {
-                setSelectedCategory(cat);
-                setCurrentPage(1);
-              }}
-              style={[
-                styles.categoryChip,
-                { borderColor: colors.border, backgroundColor: colors.card },
-                selectedCategory === cat && { borderColor: colors.accent, backgroundColor: `${colors.accent}15` },
-              ]}>
-              <Text
-                style={[
-                  styles.categoryChipText,
-                  { color: selectedCategory === cat ? colors.accent : colors.textSecondary },
-                ]}>
-                {cat}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Sort Controls Bar */}
-        <View style={styles.sortBar}>
-          <View style={styles.sortLabelGroup}>
-            <ArrowUpDown color={colors.textSecondary} size={14} />
-            <Text style={[styles.sortLabel, { color: colors.textSecondary }]}>Sort:</Text>
+        <View style={[styles.responsiveContainer, isWideScreen && styles.responsiveContainerWide]}>
+          
+          {/* Header Title */}
+          <View style={styles.titleRow}>
+            <Text style={[styles.historyTitle, { color: colors.text }]}>
+              Transactions ({filteredAndSortedTx.length})
+            </Text>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortOptionsScroll}>
-            {[
-              { key: 'date_desc', label: 'Newest' },
-              { key: 'date_asc', label: 'Oldest' },
-              { key: 'amount_desc', label: 'Highest Amount' },
-              { key: 'amount_asc', label: 'Lowest Amount' },
-            ].map((opt) => (
+
+          {/* Search Bar */}
+          <View style={[styles.searchBox, { borderColor: colors.inputBorder, backgroundColor: colors.inputBackground }]}>
+            <Search color={colors.inputPlaceholder} size={16} />
+            <TextInput
+              style={[styles.searchInput, { color: colors.inputText }]}
+              placeholder="Search transactions by title or category..."
+              placeholderTextColor={colors.inputPlaceholder}
+              value={searchQuery}
+              onChangeText={(t) => {
+                setSearchQuery(t);
+                setCurrentPage(1);
+              }}
+            />
+          </View>
+
+          {/* Transaction Type Filters */}
+          <View style={styles.typeFilters}>
+            {(['all', 'income', 'expense'] as const).map((type) => (
               <TouchableOpacity
-                key={opt.key}
-                onPress={() => setSortOption(opt.key as SortOption)}
+                key={type}
+                onPress={() => {
+                  setActiveType(type);
+                  setCurrentPage(1);
+                }}
                 style={[
-                  styles.sortChip,
+                  styles.typeTab,
                   { borderColor: colors.border, backgroundColor: colors.card },
-                  sortOption === opt.key && { backgroundColor: colors.text, borderColor: colors.text },
+                  activeType === type && {
+                    backgroundColor: colors.text,
+                    borderColor: colors.text,
+                  },
                 ]}>
                 <Text
                   style={[
-                    styles.sortChipText,
-                    { color: colors.textSecondary },
-                    sortOption === opt.key && { color: colors.background, fontWeight: '700' },
+                    styles.typeTabText,
+                    { color: activeType === type ? colors.background : colors.textSecondary },
                   ]}>
-                  {opt.label}
+                  {type === 'all' ? 'All' : type === 'income' ? 'Income' : 'Expenses'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Category Filters Horizontal List */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesRow}>
+            {categories.map((cat) => (
+              <TouchableOpacity
+                key={cat}
+                onPress={() => {
+                  setSelectedCategory(cat);
+                  setCurrentPage(1);
+                }}
+                style={[
+                  styles.categoryChip,
+                  { borderColor: colors.border, backgroundColor: colors.card },
+                  selectedCategory === cat && { borderColor: colors.accent, backgroundColor: `${colors.accent}15` },
+                ]}>
+                <Text
+                  style={[
+                    styles.categoryChipText,
+                    { color: selectedCategory === cat ? colors.accent : colors.textSecondary },
+                  ]}>
+                  {cat}
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </View>
 
-        {/* Transactions List */}
-        <View style={styles.txList}>
-          {paginatedTx.map((tx) => {
-            const isInc = tx.transactionType === 'income';
-            const dateStr = new Date(tx.date).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-            });
-
-            return (
-              <View key={tx.id} style={[styles.txItem, { borderBottomColor: colors.border }]}>
-                <View style={styles.txLeft}>
-                  <View
-                    style={[
-                      styles.txIconContainer,
-                      { backgroundColor: isInc ? `${colors.success}15` : `${colors.danger}15` },
-                    ]}>
-                    {isInc ? (
-                      <ArrowUpRight color={colors.success} size={16} />
-                    ) : (
-                      <ArrowDownRight color={colors.danger} size={16} />
-                    )}
-                  </View>
-                  <View style={styles.txInfo}>
-                    <Text numberOfLines={1} style={[styles.txTitleText, { color: colors.text }]}>
-                      {tx.title}
-                    </Text>
-                    <Text style={[styles.txMetaText, { color: colors.textSecondary }]}>
-                      {tx.category} • {dateStr}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.txRightGroup}>
+          {/* Sort Controls Bar */}
+          <View style={styles.sortBar}>
+            <View style={styles.sortLabelGroup}>
+              <ArrowUpDown color={colors.textSecondary} size={14} />
+              <Text style={[styles.sortLabel, { color: colors.textSecondary }]}>Sort:</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortOptionsScroll}>
+              {[
+                { key: 'date_desc', label: 'Newest' },
+                { key: 'date_asc', label: 'Oldest' },
+                { key: 'amount_desc', label: 'Highest Amount' },
+                { key: 'amount_asc', label: 'Lowest Amount' },
+              ].map((opt) => (
+                <TouchableOpacity
+                  key={opt.key}
+                  onPress={() => setSortOption(opt.key as SortOption)}
+                  style={[
+                    styles.sortChip,
+                    { borderColor: colors.border, backgroundColor: colors.card },
+                    sortOption === opt.key && { backgroundColor: colors.text, borderColor: colors.text },
+                  ]}>
                   <Text
                     style={[
-                      styles.txAmountText,
-                      { color: isInc ? colors.success : colors.text },
+                      styles.sortChipText,
+                      { color: colors.textSecondary },
+                      sortOption === opt.key && { color: colors.background, fontWeight: '700' },
                     ]}>
-                    {isInc ? '+' : '-'} {currency} {tx.amount.toLocaleString('en-IN')}
+                    {opt.label}
                   </Text>
-                  <TouchableOpacity
-                    accessibilityRole="button"
-                    accessibilityLabel="Delete Transaction"
-                    onPress={() => handleDeleteTxPress(tx)}
-                    style={styles.deleteTxBtn}>
-                    <Trash2 color={colors.danger} size={14} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
 
-          {filteredAndSortedTx.length === 0 && (
-            <View style={styles.emptySearchContainer}>
-              <Search color={colors.textSecondary} size={28} />
-              <Text style={[styles.emptySearchText, { color: colors.textSecondary }]}>
-                No matching transactions.
+          {/* Transactions List */}
+          <View style={[styles.txList, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {paginatedTx.map((tx, idx) => {
+              const isInc = tx.transactionType === 'income';
+              const dateStr = new Date(tx.date).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+              });
+              const isLast = idx === paginatedTx.length - 1;
+
+              return (
+                <View 
+                  key={tx.id} 
+                  style={[
+                    styles.txItem, 
+                    { borderBottomColor: colors.border },
+                    isLast && { borderBottomWidth: 0 }
+                  ]}>
+                  <View style={styles.txLeft}>
+                    <View
+                      style={[
+                        styles.txIconContainer,
+                        { backgroundColor: isInc ? `${colors.success}15` : `${colors.danger}15` },
+                      ]}>
+                      {isInc ? (
+                        <ArrowUpRight color={colors.success} size={16} />
+                      ) : (
+                        <ArrowDownRight color={colors.danger} size={16} />
+                      )}
+                    </View>
+                    <View style={styles.txInfo}>
+                      <Text numberOfLines={1} style={[styles.txTitleText, { color: colors.text }]}>
+                        {tx.title}
+                      </Text>
+                      <Text style={[styles.txMetaText, { color: colors.textSecondary }]}>
+                        {tx.category} • {dateStr}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.txRightGroup}>
+                    <Text
+                      style={[
+                        styles.txAmountText,
+                        { color: isInc ? colors.success : colors.text },
+                      ]}>
+                      {isInc ? '+' : '-'} {currency} {tx.amount.toLocaleString('en-IN')}
+                    </Text>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel="Delete Transaction"
+                      onPress={() => handleDeleteTxPress(tx)}
+                      style={[styles.deleteTxBtn, { backgroundColor: colors.backgroundElement }]}>
+                      <Trash2 color={colors.danger} size={14} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+
+            {filteredAndSortedTx.length === 0 && (
+              <View style={styles.emptySearchContainer}>
+                <Search color={colors.textSecondary} size={28} />
+                <Text style={[styles.emptySearchText, { color: colors.textSecondary }]}>
+                  No matching transactions.
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <View style={styles.paginationRow}>
+              <TouchableOpacity
+                disabled={validPage <= 1}
+                onPress={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                style={[
+                  styles.pageBtn,
+                  { borderColor: colors.border, backgroundColor: colors.card },
+                  validPage <= 1 && { opacity: 0.4 },
+                ]}>
+                <ChevronLeft color={colors.text} size={16} />
+                <Text style={[styles.pageBtnText, { color: colors.text }]}>Prev</Text>
+              </TouchableOpacity>
+
+              <Text style={[styles.pageInfoText, { color: colors.textSecondary }]}>
+                Page {validPage} of {totalPages}
               </Text>
+
+              <TouchableOpacity
+                disabled={validPage >= totalPages}
+                onPress={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                style={[
+                  styles.pageBtn,
+                  { borderColor: colors.border, backgroundColor: colors.card },
+                  validPage >= totalPages && { opacity: 0.4 },
+                ]}>
+                <Text style={[styles.pageBtnText, { color: colors.text }]}>Next</Text>
+                <ChevronRight color={colors.text} size={16} />
+              </TouchableOpacity>
             </View>
           )}
+
+          {/* Disconnect Action */}
+          <Button
+            label="Disconnect Account"
+            variant="danger"
+            onPress={() => setDisconnectModalVisible(true)}
+            style={styles.disconnectBtn}
+          />
+
         </View>
-
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <View style={styles.paginationRow}>
-            <TouchableOpacity
-              disabled={validPage <= 1}
-              onPress={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              style={[
-                styles.pageBtn,
-                { borderColor: colors.border, backgroundColor: colors.card },
-                validPage <= 1 && { opacity: 0.4 },
-              ]}>
-              <ChevronLeft color={colors.text} size={16} />
-              <Text style={[styles.pageBtnText, { color: colors.text }]}>Prev</Text>
-            </TouchableOpacity>
-
-            <Text style={[styles.pageInfoText, { color: colors.textSecondary }]}>
-              Page {validPage} of {totalPages}
-            </Text>
-
-            <TouchableOpacity
-              disabled={validPage >= totalPages}
-              onPress={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              style={[
-                styles.pageBtn,
-                { borderColor: colors.border, backgroundColor: colors.card },
-                validPage >= totalPages && { opacity: 0.4 },
-              ]}>
-              <Text style={[styles.pageBtnText, { color: colors.text }]}>Next</Text>
-              <ChevronRight color={colors.text} size={16} />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Disconnect Action */}
-        <Button
-          label="Disconnect Account"
-          variant="danger"
-          onPress={() => setDisconnectModalVisible(true)}
-          style={styles.disconnectBtn}
-        />
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -461,9 +476,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   accountHeader: {
-    padding: Spacing.four,
-    alignItems: 'center',
     borderBottomWidth: 1,
+    paddingVertical: Spacing.four,
+    alignItems: 'center',
+  },
+  headerInner: {
+    alignItems: 'center',
+    maxWidth: 1280,
+    width: '100%',
+    paddingHorizontal: Spacing.four,
   },
   accountLabel: {
     fontSize: 12,
@@ -480,6 +501,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
+    maxWidth: 500,
     marginTop: Spacing.two,
   },
   statCell: {
@@ -506,9 +528,14 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.four,
-    maxWidth: 680,
+    alignItems: 'center',
+  },
+  responsiveContainer: {
     width: '100%',
-    alignSelf: 'center',
+    maxWidth: 1280,
+  },
+  responsiveContainerWide: {
+    paddingHorizontal: Spacing.two,
   },
   titleRow: {
     flexDirection: 'row',
@@ -523,10 +550,10 @@ const styles = StyleSheet.create({
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: 10,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    height: 46,
     marginBottom: Spacing.three,
   },
   searchInput: {
@@ -596,6 +623,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   txList: {
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
     marginBottom: Spacing.three,
   },
   txItem: {
@@ -612,8 +643,8 @@ const styles = StyleSheet.create({
     marginRight: Spacing.two,
   },
   txIconContainer: {
-    width: 32,
-    height: 32,
+    width: 34,
+    height: 34,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',

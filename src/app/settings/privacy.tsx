@@ -5,15 +5,14 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  useColorScheme,
 } from 'react-native';
 import { ShieldAlert, ShieldCheck, Lock, KeyRound, UserCheck } from 'lucide-react-native';
-import { Colors, Spacing } from '../../constants/theme';
+import { Spacing } from '../../constants/theme';
+import { useAppTheme } from '../../hooks/useAppTheme';
 import Card from '../../components/ui/Card';
 
 export default function PrivacyPolicy() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' || !scheme ? 'light' : scheme];
+  const { colors } = useAppTheme();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -28,7 +27,7 @@ export default function PrivacyPolicy() {
         </View>
 
         {/* Core Security Pillars */}
-        <Card style={[styles.policyCard, { borderColor: colors.border }]}>
+        <Card style={[styles.policyCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
           <View style={styles.pillarRow}>
             <Lock color={colors.accent} size={24} style={styles.pillarIcon} />
             <View style={styles.pillarContent}>
@@ -87,7 +86,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.four,
-    maxWidth: 680,
+    maxWidth: 780,
     width: '100%',
     alignSelf: 'center',
   },
@@ -108,6 +107,7 @@ const styles = StyleSheet.create({
   },
   policyCard: {
     borderWidth: 1,
+    borderRadius: 16,
     padding: Spacing.four,
   },
   pillarRow: {
@@ -136,6 +136,7 @@ const styles = StyleSheet.create({
   },
   disclaimerCard: {
     borderWidth: 1,
+    borderRadius: 16,
     padding: Spacing.four,
     marginTop: Spacing.four,
   },

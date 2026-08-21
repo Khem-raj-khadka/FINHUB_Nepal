@@ -6,7 +6,6 @@ import {
   SafeAreaView,
   ScrollView,
   TextInput,
-  useColorScheme,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
@@ -16,7 +15,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useFinanceStore } from '../../store/useFinanceStore';
-import { Colors, Spacing } from '../../constants/theme';
+import { Spacing } from '../../constants/theme';
 import Typography from '../../constants/Typography';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
@@ -152,7 +151,7 @@ export default function AddGoal() {
             ))}
           </ScrollView>
 
-          <Card style={[styles.card, { borderColor: colors.border }]}>
+          <Card style={[styles.card, { borderColor: colors.border, backgroundColor: colors.card }]}>
             {formError && (
               <View style={[styles.errorBox, { backgroundColor: `${colors.danger}15` }]}>
                 <Text style={[styles.errorBoxText, { color: colors.danger }]}>{formError}</Text>
@@ -196,13 +195,13 @@ export default function AddGoal() {
                     style={[
                       styles.input,
                       {
-                        color: colors.text,
-                        borderColor: errors.name ? colors.danger : colors.border,
-                        backgroundColor: colors.background,
+                        color: colors.inputText,
+                        borderColor: errors.name ? colors.danger : colors.inputBorder,
+                        backgroundColor: colors.inputBackground,
                       },
                     ]}
                     placeholder="e.g. Emergency Fund, Buy a Laptop, Travel Fund"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.inputPlaceholder}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
@@ -225,13 +224,13 @@ export default function AddGoal() {
                     style={[
                       styles.input,
                       {
-                        color: colors.text,
-                        borderColor: errors.targetAmount ? colors.danger : colors.border,
-                        backgroundColor: colors.background,
+                        color: colors.inputText,
+                        borderColor: errors.targetAmount ? colors.danger : colors.inputBorder,
+                        backgroundColor: colors.inputBackground,
                       },
                     ]}
                     placeholder="e.g. 150000"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.inputPlaceholder}
                     keyboardType="numeric"
                     onBlur={onBlur}
                     onChangeText={(text) => {
@@ -260,13 +259,13 @@ export default function AddGoal() {
                     style={[
                       styles.input,
                       {
-                        color: colors.text,
-                        borderColor: errors.currentAmount ? colors.danger : colors.border,
-                        backgroundColor: colors.background,
+                        color: colors.inputText,
+                        borderColor: errors.currentAmount ? colors.danger : colors.inputBorder,
+                        backgroundColor: colors.inputBackground,
                       },
                     ]}
                     placeholder="e.g. 25000 (enter 0 if starting new)"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.inputPlaceholder}
                     keyboardType="numeric"
                     onBlur={onBlur}
                     onChangeText={(text) => {
@@ -295,13 +294,13 @@ export default function AddGoal() {
                     style={[
                       styles.input,
                       {
-                        color: colors.text,
-                        borderColor: errors.targetDate ? colors.danger : colors.border,
-                        backgroundColor: colors.background,
+                        color: colors.inputText,
+                        borderColor: errors.targetDate ? colors.danger : colors.inputBorder,
+                        backgroundColor: colors.inputBackground,
                       },
                     ]}
                     placeholder="e.g. 2027-06-30"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.inputPlaceholder}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
@@ -326,13 +325,13 @@ export default function AddGoal() {
                     style={[
                       styles.textArea,
                       {
-                        color: colors.text,
-                        borderColor: colors.border,
-                        backgroundColor: colors.background,
+                        color: colors.inputText,
+                        borderColor: colors.inputBorder,
+                        backgroundColor: colors.inputBackground,
                       },
                     ]}
                     placeholder="Add purpose, milestones, or notes for this goal..."
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.inputPlaceholder}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
@@ -368,7 +367,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.four,
-    maxWidth: 680,
+    maxWidth: 760,
     width: '100%',
     alignSelf: 'center',
   },
@@ -402,6 +401,7 @@ const styles = StyleSheet.create({
   card: {
     padding: Spacing.four,
     borderRadius: 16,
+    borderWidth: 1,
   },
   errorBox: {
     padding: Spacing.two * 1.5,
@@ -445,14 +445,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   input: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: 10,
     paddingVertical: Spacing.two * 1.5,
     paddingHorizontal: Spacing.three,
     fontSize: 15,
   },
   textArea: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: 10,
     paddingVertical: Spacing.two * 1.5,
     paddingHorizontal: Spacing.three,

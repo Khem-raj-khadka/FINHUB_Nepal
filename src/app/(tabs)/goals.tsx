@@ -10,9 +10,10 @@ import {
   TextInput,
   Modal,
   RefreshControl,
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Plus, Target, Trash2, Edit3, AlertCircle, CheckCircle2, Shield, Laptop, Car, Home, Compass, GraduationCap } from 'lucide-react-native';
+import { Plus, Trash2, Edit3, AlertCircle, CheckCircle2 } from 'lucide-react-native';
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { Spacing } from '../../constants/theme';
 import Typography from '../../constants/Typography';
@@ -28,6 +29,8 @@ export default function Goals() {
   const router = useRouter();
   const { colors } = useAppTheme();
   const { t } = useTranslation();
+  const { width: windowWidth } = useWindowDimensions();
+  const isWideScreen = windowWidth >= 768;
 
   // Zustand state
   const {
@@ -73,7 +76,7 @@ export default function Goals() {
   };
 
   const getGoalIcon = (iconName: string) => {
-    switch (iconName.toLowerCase()) {
+    switch (iconName?.toLowerCase()) {
       case 'shield':
         return '🛡️';
       case 'laptop':
@@ -218,15 +221,17 @@ export default function Goals() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('goals.title')}</Text>
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => router.push('/goals/add')}
-          style={[styles.addButton, { backgroundColor: colors.text }]}>
-          <Plus color={colors.background} size={16} style={styles.addIcon} />
-          <Text style={[styles.addButtonText, { color: colors.background }]}>{t('goals.newGoal')}</Text>
-        </TouchableOpacity>
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
+        <View style={styles.headerInner}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('goals.title')}</Text>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => router.push('/goals/add')}
+            style={[styles.addButton, { backgroundColor: colors.text }]}>
+            <Plus color={colors.background} size={16} style={styles.addIcon} />
+            <Text style={[styles.addButtonText, { color: colors.background }]}>{t('goals.newGoal')}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView 
@@ -236,144 +241,157 @@ export default function Goals() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
         }>
         
-        {/* Feedback Alert Toast */}
-        {feedbackMessage && (
-          <View style={[styles.feedbackBox, { backgroundColor: colors.card, borderColor: colors.success }]}>
-            <CheckCircle2 color={colors.success} size={18} />
-            <Text style={[styles.feedbackText, { color: colors.text }]}>{feedbackMessage}</Text>
+        <View style={[styles.responsiveContainer, isWideScreen && styles.responsiveContainerWide]}>
+          
+          {/* Feedback Alert Toast */}
+          {feedbackMessage && (
+            <View style={[styles.feedbackBox, { backgroundColor: colors.card, borderColor: colors.success }]}>
+              <CheckCircle2 color={colors.success} size={18} />
+              <Text style={[styles.feedbackText, { color: colors.text }]}>{feedbackMessage}</Text>
+            </View>
+          )}
+
+          {/* Smart Savings Recommendation Card */}
+          <Card style={[styles.smartRecommendCard, { borderColor: colors.border, backgroundColor: colors.backgroundElement }]}>
+            <Text style={[styles.smartTitle, { color: colors.text }]}>{t('goals.smartSavingsTitle')}</Text>
+            <Text style={[styles.smartDesc, { color: colors.textSecondary }]}>
+              {t('goals.smartSavingsDesc', { amount: fmt(smartSavingsCapacity) })}
+            </Text>
+          </Card>
+
+          {/* Goals List Header */}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('goals.activeGoals')} ({goals.length})</Text>
           </View>
-        )}
+          
+          {/* Goals Grid (Responsive) */}
+          <View style={[styles.goalsGrid, isWideScreen && styles.goalsGridWide]}>
+            {goals.map((goal) => {
+              const progress = calculateGoalProgress(goal.currentAmount, goal.targetAmount);
+              const remainingAmount = Math.max(0, goal.targetAmount - goal.currentAmount);
+              const isAchieved = goal.currentAmount >= goal.targetAmount;
+              const dateStr = new Date(goal.targetDate).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              });
 
-        {/* Smart Savings Recommendation Card */}
-        <Card style={[styles.smartRecommendCard, { borderColor: colors.border, backgroundColor: colors.backgroundElement }]}>
-          <Text style={[styles.smartTitle, { color: colors.text }]}>{t('goals.smartSavingsTitle')}</Text>
-          <Text style={[styles.smartDesc, { color: colors.textSecondary }]}>
-            {t('goals.smartSavingsDesc', { amount: fmt(smartSavingsCapacity) })}
-          </Text>
-        </Card>
+              return (
+                <Card 
+                  key={goal.id} 
+                  style={[
+                    styles.goalCard,
+                    isWideScreen && styles.goalCardWide,
+                    { borderColor: colors.border, backgroundColor: colors.card }
+                  ]}>
+                  {/* Top Row: Icon, Name, Date, Action Buttons */}
+                  <View style={styles.goalHeader}>
+                    <View style={[styles.iconCircle, { backgroundColor: colors.backgroundElement }]}>
+                      <Text style={styles.goalIconEmoji}>{getGoalIcon(goal.icon)}</Text>
+                    </View>
+                    <View style={styles.goalMeta}>
+                      <Text numberOfLines={1} style={[styles.goalName, { color: colors.text }]}>{goal.name}</Text>
+                      <Text style={[styles.goalDate, { color: colors.textSecondary }]}>
+                        {t('goals.target')}: {dateStr}
+                      </Text>
+                    </View>
+                    <View style={styles.goalHeaderButtons}>
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel="Edit Goal"
+                        onPress={() => handleOpenEditModal(goal)}
+                        style={[styles.headerActionIcon, { backgroundColor: colors.backgroundElement }]}>
+                        <Edit3 color={colors.textSecondary} size={15} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel="Delete Goal"
+                        onPress={() => handleOpenDeleteModal(goal)}
+                        style={[styles.headerActionIcon, { backgroundColor: colors.backgroundElement }]}>
+                        <Trash2 color={colors.danger} size={15} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
 
-        {/* Goals List Header */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('goals.activeGoals')} ({goals.length})</Text>
-        </View>
-        
-        {goals.map((goal) => {
-          const progress = calculateGoalProgress(goal.currentAmount, goal.targetAmount);
-          const remainingAmount = Math.max(0, goal.targetAmount - goal.currentAmount);
-          const isAchieved = goal.currentAmount >= goal.targetAmount;
-          const dateStr = new Date(goal.targetDate).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          });
-
-          return (
-            <Card key={goal.id} style={[styles.goalCard, { borderColor: colors.border }]}>
-              {/* Top Row: Icon, Name, Date, Action Buttons */}
-              <View style={styles.goalHeader}>
-                <View style={[styles.iconCircle, { backgroundColor: colors.backgroundElement }]}>
-                  <Text style={styles.goalIconEmoji}>{getGoalIcon(goal.icon)}</Text>
-                </View>
-                <View style={styles.goalMeta}>
-                  <Text style={[styles.goalName, { color: colors.text }]}>{goal.name}</Text>
-                  <Text style={[styles.goalDate, { color: colors.textSecondary }]}>
-                    {t('goals.target')}: {dateStr}
-                  </Text>
-                </View>
-                <View style={styles.goalHeaderButtons}>
-                  <TouchableOpacity
-                    accessibilityRole="button"
-                    accessibilityLabel="Edit Goal"
-                    onPress={() => handleOpenEditModal(goal)}
-                    style={[styles.headerActionIcon, { backgroundColor: colors.backgroundElement }]}>
-                    <Edit3 color={colors.textSecondary} size={15} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    accessibilityRole="button"
-                    accessibilityLabel="Delete Goal"
-                    onPress={() => handleOpenDeleteModal(goal)}
-                    style={[styles.headerActionIcon, { backgroundColor: colors.backgroundElement }]}>
-                    <Trash2 color={colors.danger} size={15} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Description if present */}
-              {goal.description ? (
-                <Text style={[styles.goalDescription, { color: colors.textSecondary }]}>
-                  {goal.description}
-                </Text>
-              ) : null}
-
-              {/* Progress bar */}
-              <View style={styles.progressContainer}>
-                <ProgressBar progress={progress} showText={false} height={10} />
-                <View style={styles.progressPercentageRow}>
-                  <Text style={[styles.progressPctText, { color: isAchieved ? colors.success : colors.accent }]}>
-                    {progress.toFixed(0)}% completed
-                  </Text>
-                  {isAchieved && (
-                    <Text style={[styles.achievedBadge, { color: colors.success }]}>
-                      {t('goals.achieved')}
+                  {/* Description if present */}
+                  {goal.description ? (
+                    <Text numberOfLines={2} style={[styles.goalDescription, { color: colors.textSecondary }]}>
+                      {goal.description}
                     </Text>
-                  )}
-                </View>
-              </View>
+                  ) : null}
 
-              {/* 3-Column Financial Breakdown */}
-              <View style={styles.goalDetailsRow}>
-                <View style={styles.metricColumn}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>{t('goals.saved')}</Text>
-                  <Text style={[styles.detailValue, { color: colors.text }]}>{fmt(goal.currentAmount)}</Text>
-                </View>
-                <View style={styles.metricColumn}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>{t('goals.target')}</Text>
-                  <Text style={[styles.detailValue, { color: colors.text }]}>{fmt(goal.targetAmount)}</Text>
-                </View>
-                <View style={[styles.metricColumn, styles.rightAlign]}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>{t('goals.remaining')}</Text>
-                  <Text style={[styles.detailValue, { color: isAchieved ? colors.success : colors.warning }]}>
-                    {isAchieved ? 'Completed' : fmt(remainingAmount)}
-                  </Text>
-                </View>
-              </View>
+                  {/* Progress bar */}
+                  <View style={styles.progressContainer}>
+                    <ProgressBar progress={progress} showText={false} height={10} />
+                    <View style={styles.progressPercentageRow}>
+                      <Text style={[styles.progressPctText, { color: isAchieved ? colors.success : colors.accent }]}>
+                        {progress.toFixed(0)}% completed
+                      </Text>
+                      {isAchieved && (
+                        <Text style={[styles.achievedBadge, { color: colors.success }]}>
+                          {t('goals.achieved')}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
 
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                  {/* 3-Column Financial Breakdown */}
+                  <View style={styles.goalDetailsRow}>
+                    <View style={styles.metricColumn}>
+                      <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>{t('goals.saved')}</Text>
+                      <Text numberOfLines={1} style={[styles.detailValue, { color: colors.text }]}>{fmt(goal.currentAmount)}</Text>
+                    </View>
+                    <View style={styles.metricColumn}>
+                      <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>{t('goals.target')}</Text>
+                      <Text numberOfLines={1} style={[styles.detailValue, { color: colors.text }]}>{fmt(goal.targetAmount)}</Text>
+                    </View>
+                    <View style={[styles.metricColumn, styles.rightAlign]}>
+                      <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>{t('goals.remaining')}</Text>
+                      <Text numberOfLines={1} style={[styles.detailValue, { color: isAchieved ? colors.success : colors.warning }]}>
+                        {isAchieved ? 'Completed' : fmt(remainingAmount)}
+                      </Text>
+                    </View>
+                  </View>
 
-              {/* Add/Withdraw Controls */}
-              <View style={styles.controlsRow}>
-                <Button
-                  label={t('goals.withdraw')}
-                  variant="outline"
-                  size="small"
-                  onPress={() => handleOpenActionModal(goal, 'withdraw')}
-                  style={styles.controlBtn}
-                />
-                <Button
-                  label={t('goals.addMoney')}
-                  size="small"
-                  onPress={() => handleOpenActionModal(goal, 'add')}
-                  style={[styles.controlBtn, { backgroundColor: colors.success }]}
-                />
-              </View>
-            </Card>
-          );
-        })}
+                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-        {/* Empty State */}
-        {goals.length === 0 && (
-          <View style={[styles.emptyContainer, { borderColor: colors.border }]}>
-            <AlertCircle color={colors.textSecondary} size={36} />
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('goals.emptyState')}</Text>
-            <Button
-              label={t('goals.createGoalBtn')}
-              variant="primary"
-              size="small"
-              onPress={() => router.push('/goals/add')}
-              style={styles.emptyBtn}
-            />
+                  {/* Add/Withdraw Controls */}
+                  <View style={styles.controlsRow}>
+                    <Button
+                      label={t('goals.withdraw')}
+                      variant="outline"
+                      size="small"
+                      onPress={() => handleOpenActionModal(goal, 'withdraw')}
+                      style={styles.controlBtn}
+                    />
+                    <Button
+                      label={t('goals.addMoney')}
+                      size="small"
+                      onPress={() => handleOpenActionModal(goal, 'add')}
+                      style={[styles.controlBtn, { backgroundColor: colors.success }]}
+                    />
+                  </View>
+                </Card>
+              );
+            })}
           </View>
-        )}
+
+          {/* Empty State */}
+          {goals.length === 0 && (
+            <View style={[styles.emptyContainer, { borderColor: colors.border, backgroundColor: colors.card }]}>
+              <AlertCircle color={colors.textSecondary} size={36} />
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('goals.emptyState')}</Text>
+              <Button
+                label={t('goals.createGoalBtn')}
+                variant="primary"
+                size="small"
+                onPress={() => router.push('/goals/add')}
+                style={styles.emptyBtn}
+              />
+            </View>
+          )}
+
+        </View>
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -406,13 +424,13 @@ export default function Goals() {
                   style={[
                     styles.modalInput,
                     {
-                      color: colors.text,
-                      borderColor: colors.border,
-                      backgroundColor: colors.background,
+                      color: colors.inputText,
+                      borderColor: colors.inputBorder,
+                      backgroundColor: colors.inputBackground,
                     },
                   ]}
                   placeholder="e.g. 5000"
-                  placeholderTextColor={colors.textSecondary}
+                  placeholderTextColor={colors.inputPlaceholder}
                   keyboardType="numeric"
                   value={amountInput}
                   onChangeText={(val) => {
@@ -465,12 +483,12 @@ export default function Goals() {
                   <TextInput
                     style={[
                       styles.modalInput,
-                      { color: colors.text, borderColor: colors.border, backgroundColor: colors.background },
+                      { color: colors.inputText, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground },
                     ]}
                     value={editName}
                     onChangeText={setEditName}
                     placeholder="Goal Name"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.inputPlaceholder}
                   />
                 </View>
 
@@ -480,13 +498,13 @@ export default function Goals() {
                   <TextInput
                     style={[
                       styles.modalInput,
-                      { color: colors.text, borderColor: colors.border, backgroundColor: colors.background },
+                      { color: colors.inputText, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground },
                     ]}
                     value={editTarget}
                     onChangeText={setEditTarget}
                     keyboardType="numeric"
                     placeholder="Target Amount"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.inputPlaceholder}
                   />
                 </View>
 
@@ -496,13 +514,13 @@ export default function Goals() {
                   <TextInput
                     style={[
                       styles.modalInput,
-                      { color: colors.text, borderColor: colors.border, backgroundColor: colors.background },
+                      { color: colors.inputText, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground },
                     ]}
                     value={editCurrent}
                     onChangeText={setEditCurrent}
                     keyboardType="numeric"
                     placeholder="Current Saved"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.inputPlaceholder}
                   />
                 </View>
 
@@ -512,12 +530,12 @@ export default function Goals() {
                   <TextInput
                     style={[
                       styles.modalInput,
-                      { color: colors.text, borderColor: colors.border, backgroundColor: colors.background },
+                      { color: colors.inputText, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground },
                     ]}
                     value={editDate}
                     onChangeText={setEditDate}
                     placeholder="YYYY-MM-DD"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.inputPlaceholder}
                   />
                 </View>
 
@@ -527,12 +545,12 @@ export default function Goals() {
                   <TextInput
                     style={[
                       styles.modalTextArea,
-                      { color: colors.text, borderColor: colors.border, backgroundColor: colors.background },
+                      { color: colors.inputText, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground },
                     ]}
                     value={editDescription}
                     onChangeText={setEditDescription}
                     placeholder="Optional notes or description"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.inputPlaceholder}
                     multiline
                     numberOfLines={2}
                   />
@@ -597,12 +615,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    height: 56,
+    borderBottomWidth: 1,
+    paddingVertical: Spacing.two,
+  },
+  headerInner: {
+    height: 48,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.four,
-    borderBottomWidth: 1,
+    maxWidth: 1280,
+    width: '100%',
+    alignSelf: 'center',
   },
   headerTitle: {
     ...Typography.h2,
@@ -625,9 +649,14 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.four,
-    maxWidth: 680,
+    alignItems: 'center',
+  },
+  responsiveContainer: {
     width: '100%',
-    alignSelf: 'center',
+    maxWidth: 1280,
+  },
+  responsiveContainerWide: {
+    paddingHorizontal: Spacing.two,
   },
   feedbackBox: {
     flexDirection: 'row',
@@ -670,11 +699,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
   },
+  goalsGrid: {
+    flexDirection: 'column',
+    gap: Spacing.three,
+  },
+  goalsGridWide: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.three,
+  },
   goalCard: {
     borderWidth: 1,
     padding: Spacing.four,
-    marginBottom: Spacing.three,
     borderRadius: 16,
+    width: '100%',
+  },
+  goalCardWide: {
+    width: '48.5%',
+    flexGrow: 1,
   },
   goalHeader: {
     flexDirection: 'row',
@@ -800,14 +842,14 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(0,0,0,0.55)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: Spacing.four,
   },
   modalCard: {
     width: '100%',
-    maxWidth: 420,
+    maxWidth: 440,
     padding: Spacing.four,
     borderWidth: 1,
     borderRadius: 16,
@@ -815,11 +857,10 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '800',
-    marginBottom: Spacing.one,
+    marginBottom: 4,
   },
   modalSubtitle: {
-    fontSize: 13.5,
-    lineHeight: 19,
+    fontSize: 13,
     marginBottom: Spacing.three,
   },
   modalErrorBox: {
@@ -828,7 +869,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.three,
   },
   modalErrorText: {
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',
   },
@@ -838,23 +879,22 @@ const styles = StyleSheet.create({
   modalLabel: {
     fontSize: 12.5,
     fontWeight: '700',
-    marginBottom: Spacing.one,
+    marginBottom: 4,
   },
   modalInput: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: 10,
-    paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
-    fontSize: 14.5,
+    paddingVertical: Spacing.two,
+    fontSize: 14,
   },
   modalTextArea: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: 10,
-    paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
     fontSize: 14,
-    minHeight: 60,
-    textAlignVertical: 'top',
+    height: 60,
   },
   modalActions: {
     flexDirection: 'row',

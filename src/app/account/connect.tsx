@@ -6,13 +6,13 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  useColorScheme,
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ShieldCheck, Info } from 'lucide-react-native';
 import { useFinanceStore } from '../../store/useFinanceStore';
-import { Colors, Spacing } from '../../constants/theme';
+import { Spacing } from '../../constants/theme';
+import { useAppTheme } from '../../hooks/useAppTheme';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import { SUPPORTED_PROVIDERS } from '../../services/mockData';
@@ -20,8 +20,7 @@ import { AccountType, ProviderType } from '../../types';
 
 export default function ConnectAccount() {
   const router = useRouter();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' || !scheme ? 'light' : scheme];
+  const { colors } = useAppTheme();
 
   // Zustand
   const { addAccount } = useFinanceStore();
@@ -33,7 +32,6 @@ export default function ConnectAccount() {
 
   const handleSelectProvider = (prov: typeof SUPPORTED_PROVIDERS[0]) => {
     setSelectedProvider(prov);
-    // Auto-select digital wallet type if provider is wallet
     if (prov.type === 'wallet') {
       setSelectedAccountType('Digital Wallet');
     } else {
@@ -45,11 +43,9 @@ export default function ConnectAccount() {
     if (!selectedProvider) return;
 
     setLoading(true);
-    // Simulate API connection latency
     setTimeout(() => {
       setLoading(false);
       
-      // Generate a realistic starting balance for the connected bank/wallet (Rs. 15,000 - 150,000)
       const randomBalance = Math.floor(15 + Math.random() * 135) * 1000;
       
       addAccount(
@@ -71,7 +67,7 @@ export default function ConnectAccount() {
           },
         ]
       );
-    }, 1200);
+    }, 800);
   };
 
   return (
@@ -91,7 +87,7 @@ export default function ConnectAccount() {
                 <Card
                   key={prov.id}
                   onPress={() => handleSelectProvider(prov)}
-                  style={[styles.providerCard, { borderColor: colors.border }]}>
+                  style={[styles.providerCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
                   <Text style={styles.providerEmoji}>{prov.icon}</Text>
                   <Text numberOfLines={1} style={[styles.providerName, { color: colors.text }]}>
                     {prov.name}
@@ -160,7 +156,7 @@ export default function ConnectAccount() {
                 ))}
               </View>
             ) : (
-              <View style={styles.walletInfo}>
+              <View style={[styles.walletInfo, { backgroundColor: colors.backgroundElement }]}>
                 <Info color={colors.textSecondary} size={18} />
                 <Text style={[styles.walletInfoText, { color: colors.textSecondary }]}>
                   This wallet will link using your registered mobile number as a primary identifier.
@@ -169,7 +165,7 @@ export default function ConnectAccount() {
             )}
 
             {/* Security Guarantee Box */}
-            <Card style={[styles.securityGuarantee, { borderColor: colors.border }]}>
+            <Card style={[styles.securityGuarantee, { borderColor: colors.border, backgroundColor: colors.card }]}>
               <Text style={[styles.secTitle, { color: colors.text }]}>🛡️ Safe & Encrypted</Text>
               <Text style={[styles.secDesc, { color: colors.textSecondary }]}>
                 By clicking below, you consent to link this provider using simulated read-only credentials. No real financial credentials will be altered.
@@ -178,7 +174,7 @@ export default function ConnectAccount() {
 
             {/* Submit */}
             <Button
-              label={`Connect Demo Account`}
+              label={`Connect Account`}
               onPress={handleConnect}
               loading={loading}
               style={styles.connectBtn}
@@ -207,7 +203,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.four,
-    maxWidth: 680,
+    maxWidth: 760,
     width: '100%',
     alignSelf: 'center',
   },
@@ -232,6 +228,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     minWidth: 130,
     borderWidth: 1,
+    borderRadius: 14,
     paddingVertical: Spacing.four,
     alignItems: 'center',
     justifyContent: 'center',
@@ -254,6 +251,7 @@ const styles = StyleSheet.create({
   disclaimerCard: {
     borderWidth: 0,
     padding: Spacing.four,
+    borderRadius: 14,
     marginTop: Spacing.two,
   },
   disclaimerTitleRow: {
@@ -308,7 +306,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    backgroundColor: '#94a3b815',
     padding: Spacing.three,
     borderRadius: 12,
     marginVertical: Spacing.three,
@@ -320,6 +317,7 @@ const styles = StyleSheet.create({
   },
   securityGuarantee: {
     borderWidth: 1,
+    borderRadius: 14,
     padding: Spacing.three,
     marginVertical: Spacing.three,
   },

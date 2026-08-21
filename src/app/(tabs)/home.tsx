@@ -10,6 +10,7 @@ import {
   Modal,
   TextInput,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Eye, EyeOff, Bell, User, ArrowUpRight, TrendingUp, Wallet, ShieldAlert, Award, Plus, X } from 'lucide-react-native';
@@ -28,6 +29,8 @@ export default function Home() {
   const router = useRouter();
   const { colors, isDark } = useAppTheme();
   const { t } = useTranslation();
+  const { width: windowWidth } = useWindowDimensions();
+  const isWideScreen = windowWidth >= 880;
 
   // Zustand state
   const {
@@ -122,7 +125,7 @@ export default function Home() {
     Alert.alert(t('general.success'), 'Transaction added successfully.');
   };
 
-  // Dynamic Sparkline Trend Data based strictly on actual user records
+  // Dynamic Sparkline Trend Data
   const getSparklineData = () => {
     if (netWorth <= 0 && transactions.length === 0 && accounts.length === 0) {
       return {
@@ -132,7 +135,6 @@ export default function Home() {
       };
     }
     
-    // For demo/active user, construct curve leading to current net worth
     const points = [
       Math.max(0, Math.round(netWorth * 0.92)),
       Math.max(0, Math.round(netWorth * 0.94)),
@@ -213,33 +215,35 @@ export default function Home() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <View>
-          <Text style={[styles.greetingText, { color: colors.textSecondary }]}>{getLocalizedGreeting()},</Text>
-          <Text style={[styles.userNameText, { color: colors.text }]}>{user?.name || 'User'} 👋</Text>
-        </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel="Notifications"
-            activeOpacity={0.7}
-            onPress={() => router.push('/settings/notifications')}
-            style={[styles.iconButton, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Bell color={colors.text} size={20} />
-            {unreadNotifs > 0 && (
-              <View style={[styles.badge, { backgroundColor: colors.danger }]}>
-                <Text style={styles.badgeText}>{unreadNotifs}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel="Profile Preferences"
-            activeOpacity={0.7}
-            onPress={() => router.push('/settings/profile')}
-            style={[styles.iconButton, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <User color={colors.text} size={20} />
-          </TouchableOpacity>
+      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
+        <View style={styles.headerInner}>
+          <View>
+            <Text style={[styles.greetingText, { color: colors.textSecondary }]}>{getLocalizedGreeting()},</Text>
+            <Text style={[styles.userNameText, { color: colors.text }]}>{user?.name || 'User'} 👋</Text>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Notifications"
+              activeOpacity={0.7}
+              onPress={() => router.push('/settings/notifications')}
+              style={[styles.iconButton, { backgroundColor: colors.backgroundElement, borderColor: colors.border }]}>
+              <Bell color={colors.text} size={20} />
+              {unreadNotifs > 0 && (
+                <View style={[styles.badge, { backgroundColor: colors.danger }]}>
+                  <Text style={styles.badgeText}>{unreadNotifs}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Profile Preferences"
+              activeOpacity={0.7}
+              onPress={() => router.push('/settings/profile')}
+              style={[styles.iconButton, { backgroundColor: colors.backgroundElement, borderColor: colors.border }]}>
+              <User color={colors.text} size={20} />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -255,234 +259,250 @@ export default function Home() {
           />
         }
       >
-        
-        {/* Net Worth Card */}
-        <Card style={styles.netWorthCard}>
-          <View style={styles.netWorthHeader}>
-            <Text style={[styles.netWorthLabel, { color: '#E2E8F0' }]}>{t('dashboard.netWorth')}</Text>
-            <TouchableOpacity onPress={toggleBalanceHidden} style={styles.eyeButton} accessibilityLabel="Toggle balance visibility">
-              {isBalanceHidden ? <EyeOff color="#FFFFFF" size={18} /> : <Eye color="#FFFFFF" size={18} />}
-            </TouchableOpacity>
-          </View>
-          <Text style={[styles.netWorthAmount, { color: '#FFFFFF' }]}>{fmt(netWorth)}</Text>
+        <View style={[styles.responsiveContainer, isWideScreen && styles.responsiveContainerWide]}>
           
-          <View style={styles.netWorthTrendRow}>
-            {netWorth > 0 ? (
-              <>
-                <ArrowUpRight color={colors.success} size={16} />
-                <Text style={[styles.netWorthTrendText, { color: '#A0AEC0' }]}>
-                  {totalAssets > 0 ? `${fmt(totalAssets)} assets vs ${fmt(totalLiabilities)} liabilities` : 'Active Portfolio'}
-                </Text>
-              </>
-            ) : (
-              <Text style={[styles.netWorthTrendText, { color: '#94A3B8' }]}>
-                {accounts.length === 0 ? 'Link accounts to start calculating net worth' : 'Balanced Portfolio'}
-              </Text>
-            )}
-          </View>
-
-          {/* Sparkline chart */}
-          <View style={styles.sparklineBox}>
-            <LineChart data={sparkline.data} labels={sparkline.labels} height={140} onDarkCard={true} />
-          </View>
-        </Card>
-
-        {/* Quick Actions Panel */}
-        <View style={styles.actionsSection}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('dashboard.quickActions')}</Text>
-          <View style={styles.quickActionsContainer}>
-            <TouchableOpacity 
-              style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
-              onPress={() => router.push('/account/connect')}
-            >
-              <Text style={styles.quickActionIcon}>🏦</Text>
-              <Text numberOfLines={1} style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addAccount')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
-              onPress={() => router.push('/investment/add')}
-            >
-              <Text style={styles.quickActionIcon}>📈</Text>
-              <Text numberOfLines={1} style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addSip')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
-              onPress={() => router.push('/goals/add')}
-            >
-              <Text style={styles.quickActionIcon}>🎯</Text>
-              <Text numberOfLines={1} style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addGoal')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
-              onPress={() => setTxModalVisible(true)}
-            >
-              <Text style={styles.quickActionIcon}>💸</Text>
-              <Text numberOfLines={1} style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addTx')}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Monthly Financial Summary Card */}
-        <View style={styles.monthlySummarySection}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('dashboard.monthlySummary')}</Text>
-          <Card style={[styles.summaryCard, { borderColor: colors.border }]}>
-            <View style={styles.summaryItemRow}>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Income</Text>
-              <Text style={[styles.summaryValue, { color: colors.success }]}>{fmt(income)}</Text>
-            </View>
-            <View style={styles.summaryItemRow}>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Expenses</Text>
-              <Text style={[styles.summaryValue, { color: colors.danger }]}>{fmt(expenses)}</Text>
-            </View>
-            <View style={styles.summaryItemRow}>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Savings</Text>
-              <Text style={[styles.summaryValue, { color: colors.accent }]}>{fmt(savings)}</Text>
-            </View>
-            <View style={styles.summaryItemRow}>
-              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>{t('dashboard.savingsRate')}</Text>
-              <Text style={[styles.summaryValue, { color: colors.text }]}>{rate.toFixed(0)}%</Text>
-            </View>
-            <Button
-              label={t('dashboard.viewFullReport')}
-              variant="outline"
-              size="small"
-              style={styles.summaryReportBtn}
-              onPress={() => setReportModalVisible(true)}
-            />
-          </Card>
-        </View>
-
-        {/* Financial Summary Grid */}
-        <View style={styles.summaryGrid}>
-          <View style={styles.gridColumn}>
-            <Card variant="flat" style={styles.gridItem}>
-              <Award color={colors.success} size={18} />
-              <Text style={[styles.gridItemLabel, { color: colors.textSecondary }]}>{t('dashboard.assets')}</Text>
-              <Text numberOfLines={1} style={[styles.gridItemValue, { color: colors.text }]}>{fmt(totalAssets)}</Text>
-            </Card>
-            <Card variant="flat" style={styles.gridItem}>
-              <Wallet color={colors.accent} size={18} />
-              <Text style={[styles.gridItemLabel, { color: colors.textSecondary }]}>{t('dashboard.monthlySavings')}</Text>
-              <Text numberOfLines={1} style={[styles.gridItemValue, { color: colors.text }]}>{fmt(savings)}</Text>
-            </Card>
-          </View>
-          <View style={styles.gridColumn}>
-            <Card variant="flat" style={styles.gridItem}>
-              <ShieldAlert color={colors.danger} size={18} />
-              <Text style={[styles.gridItemLabel, { color: colors.textSecondary }]}>{t('dashboard.liabilities')}</Text>
-              <Text numberOfLines={1} style={[styles.gridItemValue, { color: colors.text }]}>{fmt(totalLiabilities)}</Text>
-            </Card>
-            <Card variant="flat" style={styles.gridItem}>
-              <TrendingUp color={colors.warning} size={18} />
-              <Text style={[styles.gridItemLabel, { color: colors.textSecondary }]}>{t('dashboard.portfolioReturn')}</Text>
-              <Text numberOfLines={1} style={[styles.gridItemValue, { color: colors.text }]}>
-                {totalReturn >= 0 ? '+' : ''}{returnPercentage.toFixed(1)}%
-              </Text>
-            </Card>
-          </View>
-        </View>
-
-        {/* Connected Accounts Slider */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('dashboard.connectedAccounts')}</Text>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/accounts')}>
-            <Text style={[styles.viewAllText, { color: colors.accent }]}>{t('dashboard.viewAll')}</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalAccounts}>
-          {accounts.map((acc) => (
-            <Card
-              key={acc.id}
-              onPress={() => router.push(`/account/${acc.id}`)}
-              style={[styles.accountSliderCard, { borderColor: colors.border }]}>
-              <View style={styles.sliderHeader}>
-                <Text style={styles.sliderProviderEmoji}>
-                  {acc.providerType === 'bank' ? '🏦' : '📱'}
-                </Text>
-                <Text numberOfLines={1} style={[styles.sliderProviderName, { color: colors.text }]}>
-                  {acc.providerName}
-                </Text>
-              </View>
-              <Text numberOfLines={1} style={[styles.sliderBalance, { color: colors.text }]}>
-                {fmt(acc.balance)}
-              </Text>
-              <Text style={[styles.sliderType, { color: colors.textSecondary }]}>
-                {acc.accountType}
-              </Text>
-            </Card>
-          ))}
-          {accounts.length === 0 && (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => router.push('/account/connect')}
-              style={[styles.accountSliderEmpty, { borderColor: colors.border, backgroundColor: colors.card }]}>
-              <Text style={[styles.emptyAddIcon, { color: colors.textSecondary }]}>+</Text>
-              <Text style={[styles.emptyAddText, { color: colors.textSecondary }]}>{t('accounts.connectBtn')}</Text>
-            </TouchableOpacity>
-          )}
-        </ScrollView>
-
-        {/* Upcoming SIP Card */}
-        {nextSip && (
-          <View style={styles.sipSection}>
-            <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: Spacing.two }]}>{t('dashboard.upcomingSip')}</Text>
-            <Card style={[styles.sipCard, { borderColor: colors.border }]}>
-              <View style={styles.sipBadgeContainer}>
-                <Text style={[styles.sipBadge, { backgroundColor: `${colors.warning}15`, color: colors.warning }]}>
-                  {nextSip.status === 'Overdue' ? t('invest.filterOverdue') : t('dashboard.dueSoon')}
-                </Text>
-              </View>
-              <Text style={[styles.sipFundName, { color: colors.text }]}>{nextSip.name}</Text>
-              <View style={styles.sipDetailsRow}>
-                <View>
-                  <Text style={[styles.sipLabel, { color: colors.textSecondary }]}>{t('invest.upcomingSips')}</Text>
-                  <Text style={[styles.sipValue, { color: colors.text }]}>
-                    {fmt(nextSip.monthlyContribution || 0)}
-                  </Text>
+          {/* Main Dashboard Grid */}
+          <View style={[styles.dashboardGrid, isWideScreen && styles.dashboardGridWide]}>
+            
+            {/* LEFT COLUMN (or Top on mobile) */}
+            <View style={[styles.column, isWideScreen && styles.leftColumnWide]}>
+              
+              {/* Net Worth Card */}
+              <Card style={styles.netWorthCard}>
+                <View style={styles.netWorthHeader}>
+                  <Text style={[styles.netWorthLabel, { color: '#E2E8F0' }]}>{t('dashboard.netWorth')}</Text>
+                  <TouchableOpacity onPress={toggleBalanceHidden} style={styles.eyeButton} accessibilityLabel="Toggle balance visibility">
+                    {isBalanceHidden ? <EyeOff color="#FFFFFF" size={18} /> : <Eye color="#FFFFFF" size={18} />}
+                  </TouchableOpacity>
                 </View>
-                <View style={styles.alignRight}>
-                  <Text style={[styles.sipLabel, { color: colors.textSecondary }]}>{t('invest.nextDue')}</Text>
-                  <Text style={[styles.sipValue, { color: colors.text }]}>
-                    {nextSip.nextPaymentDate ? new Date(nextSip.nextPaymentDate).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    }) : 'N/A'}
-                  </Text>
+                <Text style={[styles.netWorthAmount, { color: '#FFFFFF' }]}>{fmt(netWorth)}</Text>
+                
+                <View style={styles.netWorthTrendRow}>
+                  {netWorth > 0 ? (
+                    <>
+                      <ArrowUpRight color={colors.success} size={16} />
+                      <Text style={[styles.netWorthTrendText, { color: '#A0AEC0' }]}>
+                        {totalAssets > 0 ? `${fmt(totalAssets)} assets vs ${fmt(totalLiabilities)} liabilities` : 'Active Portfolio'}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={[styles.netWorthTrendText, { color: '#94A3B8' }]}>
+                      {accounts.length === 0 ? 'Link accounts to start calculating net worth' : 'Balanced Portfolio'}
+                    </Text>
+                  )}
+                </View>
+
+                {/* Sparkline chart */}
+                <View style={styles.sparklineBox}>
+                  <LineChart data={sparkline.data} labels={sparkline.labels} height={140} onDarkCard={true} />
+                </View>
+              </Card>
+
+              {/* Monthly Financial Summary Card */}
+              <View style={styles.monthlySummarySection}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('dashboard.monthlySummary')}</Text>
+                <Card style={[styles.summaryCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                  <View style={styles.summaryItemRow}>
+                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Income</Text>
+                    <Text style={[styles.summaryValue, { color: colors.success }]}>{fmt(income)}</Text>
+                  </View>
+                  <View style={styles.summaryItemRow}>
+                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Expenses</Text>
+                    <Text style={[styles.summaryValue, { color: colors.danger }]}>{fmt(expenses)}</Text>
+                  </View>
+                  <View style={styles.summaryItemRow}>
+                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Savings</Text>
+                    <Text style={[styles.summaryValue, { color: colors.accent }]}>{fmt(savings)}</Text>
+                  </View>
+                  <View style={styles.summaryItemRow}>
+                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>{t('dashboard.savingsRate')}</Text>
+                    <Text style={[styles.summaryValue, { color: colors.text }]}>{rate.toFixed(0)}%</Text>
+                  </View>
+                  <Button
+                    label={t('dashboard.viewFullReport')}
+                    variant="outline"
+                    size="small"
+                    style={styles.summaryReportBtn}
+                    onPress={() => setReportModalVisible(true)}
+                  />
+                </Card>
+              </View>
+
+              {/* Financial Summary Grid */}
+              <View style={styles.summaryGrid}>
+                <View style={styles.gridColumn}>
+                  <Card variant="flat" style={[styles.gridItem, { backgroundColor: colors.backgroundElement }]}>
+                    <Award color={colors.success} size={18} />
+                    <Text style={[styles.gridItemLabel, { color: colors.textSecondary }]}>{t('dashboard.assets')}</Text>
+                    <Text numberOfLines={1} style={[styles.gridItemValue, { color: colors.text }]}>{fmt(totalAssets)}</Text>
+                  </Card>
+                  <Card variant="flat" style={[styles.gridItem, { backgroundColor: colors.backgroundElement }]}>
+                    <Wallet color={colors.accent} size={18} />
+                    <Text style={[styles.gridItemLabel, { color: colors.textSecondary }]}>{t('dashboard.monthlySavings')}</Text>
+                    <Text numberOfLines={1} style={[styles.gridItemValue, { color: colors.text }]}>{fmt(savings)}</Text>
+                  </Card>
+                </View>
+                <View style={styles.gridColumn}>
+                  <Card variant="flat" style={[styles.gridItem, { backgroundColor: colors.backgroundElement }]}>
+                    <ShieldAlert color={colors.danger} size={18} />
+                    <Text style={[styles.gridItemLabel, { color: colors.textSecondary }]}>{t('dashboard.liabilities')}</Text>
+                    <Text numberOfLines={1} style={[styles.gridItemValue, { color: colors.text }]}>{fmt(totalLiabilities)}</Text>
+                  </Card>
+                  <Card variant="flat" style={[styles.gridItem, { backgroundColor: colors.backgroundElement }]}>
+                    <TrendingUp color={colors.warning} size={18} />
+                    <Text style={[styles.gridItemLabel, { color: colors.textSecondary }]}>{t('dashboard.portfolioReturn')}</Text>
+                    <Text numberOfLines={1} style={[styles.gridItemValue, { color: colors.text }]}>
+                      {totalReturn >= 0 ? '+' : ''}{returnPercentage.toFixed(1)}%
+                    </Text>
+                  </Card>
                 </View>
               </View>
-              <TouchableOpacity onPress={() => router.push('/(tabs)/investments')} style={styles.sipViewDetails}>
-                <Text style={[styles.sipDetailsText, { color: colors.accent }]}>{t('dashboard.viewDetails')}</Text>
-              </TouchableOpacity>
-            </Card>
-          </View>
-        )}
 
-        {/* Financial Health Score circular gauge */}
-        <View style={styles.healthSection}>
-          <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: Spacing.two }]}>{t('dashboard.financialHealth')}</Text>
-          <Card style={styles.healthCard}>
-            <FinancialScore score={financialScore.totalScore} />
-            <TouchableOpacity
-              onPress={() => router.push('/settings/profile')}
-              style={[styles.breakdownButton, { borderColor: colors.border }]}>
-              <Text style={[styles.breakdownText, { color: colors.text }]}>{t('dashboard.viewBreakdown')}</Text>
-            </TouchableOpacity>
-          </Card>
-        </View>
-
-        {/* Smart Insights */}
-        <View style={styles.insightsSection}>
-          <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: Spacing.two }]}>{t('dashboard.smartInsights')}</Text>
-          <Card style={styles.insightCard}>
-            {dynamicInsights.map((insight, idx) => (
-              <View key={idx} style={styles.insightRow}>
-                <Text style={styles.insightEmoji}>{insight.emoji}</Text>
-                <Text style={[styles.insightText, { color: colors.text }]}>
-                  {insight.text}
-                </Text>
+              {/* Connected Accounts Slider */}
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('dashboard.connectedAccounts')}</Text>
+                <TouchableOpacity onPress={() => router.push('/(tabs)/accounts')}>
+                  <Text style={[styles.viewAllText, { color: colors.accent }]}>{t('dashboard.viewAll')}</Text>
+                </TouchableOpacity>
               </View>
-            ))}
-          </Card>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalAccounts}>
+                {accounts.map((acc) => (
+                  <Card
+                    key={acc.id}
+                    onPress={() => router.push(`/account/${acc.id}`)}
+                    style={[styles.accountSliderCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                    <View style={styles.sliderHeader}>
+                      <Text style={styles.sliderProviderEmoji}>
+                        {acc.providerType === 'bank' ? '🏦' : '📱'}
+                      </Text>
+                      <Text numberOfLines={1} style={[styles.sliderProviderName, { color: colors.text }]}>
+                        {acc.providerName}
+                      </Text>
+                    </View>
+                    <Text numberOfLines={1} style={[styles.sliderBalance, { color: colors.text }]}>
+                      {fmt(acc.balance)}
+                    </Text>
+                    <Text style={[styles.sliderType, { color: colors.textSecondary }]}>
+                      {acc.accountType}
+                    </Text>
+                  </Card>
+                ))}
+                {accounts.length === 0 && (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => router.push('/account/connect')}
+                    style={[styles.accountSliderEmpty, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                    <Text style={[styles.emptyAddIcon, { color: colors.textSecondary }]}>+</Text>
+                    <Text style={[styles.emptyAddText, { color: colors.textSecondary }]}>{t('accounts.connectBtn')}</Text>
+                  </TouchableOpacity>
+                )}
+              </ScrollView>
+            </View>
+
+            {/* RIGHT COLUMN (or Bottom on mobile) */}
+            <View style={[styles.column, isWideScreen && styles.rightColumnWide]}>
+              
+              {/* Quick Actions Panel */}
+              <View style={styles.actionsSection}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('dashboard.quickActions')}</Text>
+                <View style={styles.quickActionsContainer}>
+                  <TouchableOpacity 
+                    style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
+                    onPress={() => router.push('/account/connect')}
+                  >
+                    <Text style={styles.quickActionIcon}>🏦</Text>
+                    <Text numberOfLines={1} style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addAccount')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
+                    onPress={() => router.push('/investment/add')}
+                  >
+                    <Text style={styles.quickActionIcon}>📈</Text>
+                    <Text numberOfLines={1} style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addSip')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
+                    onPress={() => router.push('/goals/add')}
+                  >
+                    <Text style={styles.quickActionIcon}>🎯</Text>
+                    <Text numberOfLines={1} style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addGoal')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.quickActionItem, { backgroundColor: colors.card, borderColor: colors.border }]} 
+                    onPress={() => setTxModalVisible(true)}
+                  >
+                    <Text style={styles.quickActionIcon}>💸</Text>
+                    <Text numberOfLines={1} style={[styles.quickActionText, { color: colors.text }]}>{t('dashboard.addTx')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Financial Health Score circular gauge */}
+              <View style={styles.healthSection}>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: Spacing.two }]}>{t('dashboard.financialHealth')}</Text>
+                <Card style={[styles.healthCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <FinancialScore score={financialScore.totalScore} />
+                  <TouchableOpacity
+                    onPress={() => router.push('/settings/profile')}
+                    style={[styles.breakdownButton, { borderColor: colors.border, backgroundColor: colors.backgroundElement }]}>
+                    <Text style={[styles.breakdownText, { color: colors.text }]}>{t('dashboard.viewBreakdown')}</Text>
+                  </TouchableOpacity>
+                </Card>
+              </View>
+
+              {/* Upcoming SIP Card */}
+              {nextSip && (
+                <View style={styles.sipSection}>
+                  <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: Spacing.two }]}>{t('dashboard.upcomingSip')}</Text>
+                  <Card style={[styles.sipCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                    <View style={styles.sipBadgeContainer}>
+                      <Text style={[styles.sipBadge, { backgroundColor: `${colors.warning}15`, color: colors.warning }]}>
+                        {nextSip.status === 'Overdue' ? t('invest.filterOverdue') : t('dashboard.dueSoon')}
+                      </Text>
+                    </View>
+                    <Text style={[styles.sipFundName, { color: colors.text }]}>{nextSip.name}</Text>
+                    <View style={styles.sipDetailsRow}>
+                      <View>
+                        <Text style={[styles.sipLabel, { color: colors.textSecondary }]}>{t('invest.upcomingSips')}</Text>
+                        <Text style={[styles.sipValue, { color: colors.text }]}>
+                          {fmt(nextSip.monthlyContribution || 0)}
+                        </Text>
+                      </View>
+                      <View style={styles.alignRight}>
+                        <Text style={[styles.sipLabel, { color: colors.textSecondary }]}>{t('invest.nextDue')}</Text>
+                        <Text style={[styles.sipValue, { color: colors.text }]}>
+                          {nextSip.nextPaymentDate ? new Date(nextSip.nextPaymentDate).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                          }) : 'N/A'}
+                        </Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity onPress={() => router.push('/(tabs)/investments')} style={styles.sipViewDetails}>
+                      <Text style={[styles.sipDetailsText, { color: colors.accent }]}>{t('dashboard.viewDetails')}</Text>
+                    </TouchableOpacity>
+                  </Card>
+                </View>
+              )}
+
+              {/* Smart Insights */}
+              <View style={styles.insightsSection}>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: Spacing.two }]}>{t('dashboard.smartInsights')}</Text>
+                <Card style={[styles.insightCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  {dynamicInsights.map((insight, idx) => (
+                    <View key={idx} style={styles.insightRow}>
+                      <Text style={styles.insightEmoji}>{insight.emoji}</Text>
+                      <Text style={[styles.insightText, { color: colors.text }]}>
+                        {insight.text}
+                      </Text>
+                    </View>
+                  ))}
+                </Card>
+              </View>
+
+            </View>
+
+          </View>
         </View>
 
         <View style={styles.bottomSpacer} />
@@ -502,18 +522,32 @@ export default function Home() {
             <ScrollView contentContainerStyle={styles.modalScroll}>
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Title</Text>
               <TextInput
-                style={[styles.modalInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]}
+                style={[
+                  styles.modalInput,
+                  {
+                    color: colors.inputText,
+                    borderColor: colors.inputBorder,
+                    backgroundColor: colors.inputBackground,
+                  },
+                ]}
                 placeholder="e.g. Salary, Groceries"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.inputPlaceholder}
                 value={txTitle}
                 onChangeText={setTxTitle}
               />
 
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Amount (Rs.)</Text>
               <TextInput
-                style={[styles.modalInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]}
+                style={[
+                  styles.modalInput,
+                  {
+                    color: colors.inputText,
+                    borderColor: colors.inputBorder,
+                    backgroundColor: colors.inputBackground,
+                  },
+                ]}
                 placeholder="e.g. 5000"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.inputPlaceholder}
                 keyboardType="numeric"
                 value={txAmount}
                 onChangeText={setTxAmount}
@@ -524,7 +558,7 @@ export default function Home() {
                 <TouchableOpacity
                   style={[
                     styles.typeBtn,
-                    { borderColor: colors.border },
+                    { borderColor: colors.border, backgroundColor: colors.backgroundElement },
                     txType === 'expense' && { backgroundColor: `${colors.danger}15`, borderColor: colors.danger }
                   ]}
                   onPress={() => {
@@ -539,7 +573,7 @@ export default function Home() {
                 <TouchableOpacity
                   style={[
                     styles.typeBtn,
-                    { borderColor: colors.border },
+                    { borderColor: colors.border, backgroundColor: colors.backgroundElement },
                     txType === 'income' && { backgroundColor: `${colors.success}15`, borderColor: colors.success }
                   ]}
                   onPress={() => {
@@ -687,12 +721,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    borderBottomWidth: 1,
+    paddingVertical: Spacing.two,
+  },
+  headerInner: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two * 1.5,
-    borderBottomWidth: 1,
+    maxWidth: 1280,
+    width: '100%',
+    alignSelf: 'center',
   },
   greetingText: {
     ...Typography.bodySmall,
@@ -734,9 +773,33 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.three,
-    maxWidth: 720,
+    alignItems: 'center',
+  },
+  responsiveContainer: {
     width: '100%',
-    alignSelf: 'center',
+    maxWidth: 1280,
+  },
+  responsiveContainerWide: {
+    paddingHorizontal: Spacing.two,
+  },
+  dashboardGrid: {
+    width: '100%',
+    flexDirection: 'column',
+    gap: Spacing.two,
+  },
+  dashboardGridWide: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.four,
+  },
+  column: {
+    width: '100%',
+  },
+  leftColumnWide: {
+    flex: 1.25,
+  },
+  rightColumnWide: {
+    flex: 1,
   },
   netWorthCard: {
     backgroundColor: '#0F172A',
@@ -780,7 +843,8 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   actionsSection: {
-    marginTop: Spacing.three,
+    marginTop: Spacing.one,
+    marginBottom: Spacing.two,
   },
   sectionTitle: {
     ...Typography.h3,
@@ -797,7 +861,7 @@ const styles = StyleSheet.create({
   quickActionItem: {
     flexBasis: '22%',
     flexGrow: 1,
-    minWidth: 70,
+    minWidth: 75,
     borderRadius: 12,
     borderWidth: 1,
     paddingVertical: Spacing.two * 1.2,
@@ -811,7 +875,7 @@ const styles = StyleSheet.create({
   },
   quickActionText: {
     ...Typography.caption,
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '700',
     textAlign: 'center',
   },
@@ -821,6 +885,7 @@ const styles = StyleSheet.create({
   summaryCard: {
     borderWidth: 1,
     padding: Spacing.four,
+    borderRadius: 16,
   },
   summaryItemRow: {
     flexDirection: 'row',
@@ -881,7 +946,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   accountSliderCard: {
-    width: 155,
+    width: 165,
     padding: Spacing.three,
     borderRadius: 14,
     borderWidth: 1,
@@ -928,7 +993,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   sipSection: {
-    marginTop: Spacing.four,
+    marginTop: Spacing.three,
   },
   sipCard: {
     borderWidth: 1,
@@ -981,12 +1046,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   healthSection: {
-    marginTop: Spacing.four,
+    marginTop: Spacing.two,
   },
   healthCard: {
     alignItems: 'center',
     padding: Spacing.four,
     borderRadius: 16,
+    borderWidth: 1,
   },
   breakdownButton: {
     borderWidth: 1,
@@ -1000,11 +1066,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   insightsSection: {
-    marginTop: Spacing.four,
+    marginTop: Spacing.three,
   },
   insightCard: {
     padding: Spacing.four,
     borderRadius: 16,
+    borderWidth: 1,
     gap: Spacing.three,
   },
   insightRow: {
@@ -1059,7 +1126,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.one,
   },
   modalInput: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: 10,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,

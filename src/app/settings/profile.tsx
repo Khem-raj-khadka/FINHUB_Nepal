@@ -7,7 +7,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  Alert,
   Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -30,7 +29,6 @@ export default function ProfileSettings() {
     user,
     themeMode,
     setThemeMode,
-    language: storeLang, // read language directly
     setLanguage,
     financialScore,
     logout,
@@ -142,8 +140,8 @@ export default function ProfileSettings() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
         {/* User Card */}
-        <Card style={[styles.userCard, { backgroundColor: colors.backgroundElement }]}>
-          <View style={styles.avatarCircle}>
+        <Card style={[styles.userCard, { backgroundColor: colors.backgroundElement, borderColor: colors.border }]}>
+          <View style={[styles.avatarCircle, { backgroundColor: colors.card }]}>
             <Text style={styles.avatarEmoji}>👤</Text>
           </View>
           <Text style={[styles.userName, { color: colors.text }]}>{user?.name || 'Khem Raj'}</Text>
@@ -154,7 +152,7 @@ export default function ProfileSettings() {
 
         {/* Financial Health Score Breakdown */}
         <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('settings.healthBreakdown')}</Text>
-        <Card style={styles.breakdownCard}>
+        <Card style={[styles.breakdownCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.totalScoreRow}>
             <Award color={colors.accent} size={24} />
             <Text style={[styles.totalScoreText, { color: colors.text }]}>
@@ -215,7 +213,7 @@ export default function ProfileSettings() {
         <Text style={[styles.sectionTitle, { color: colors.text, marginTop: Spacing.four }]}>Preferences</Text>
         
         {/* Dark Mode toggle */}
-        <Card style={[styles.settingItem, { borderColor: colors.border }]}>
+        <Card style={[styles.settingItem, { borderColor: colors.border, backgroundColor: colors.card }]}>
           <View style={styles.settingLeft}>
             <Moon color={colors.textSecondary} size={20} />
             <Text style={[styles.settingLabelText, { color: colors.text }]}>{t('settings.darkMode')}</Text>
@@ -229,7 +227,7 @@ export default function ProfileSettings() {
         </Card>
 
         {/* Language selector toggle */}
-        <Card style={[styles.settingItem, { borderColor: colors.border }]}>
+        <Card style={[styles.settingItem, { borderColor: colors.border, backgroundColor: colors.card }]}>
           <View style={styles.settingLeft}>
             <Globe color={colors.textSecondary} size={20} />
             <Text style={[styles.settingLabelText, { color: colors.text }]}>{t('settings.language')}</Text>
@@ -247,7 +245,7 @@ export default function ProfileSettings() {
 
         <Card
           onPress={() => router.push('/settings/privacy')}
-          style={[styles.linkItem, { borderColor: colors.border }]}>
+          style={[styles.linkItem, { borderColor: colors.border, backgroundColor: colors.card }]}>
           <View style={styles.settingLeft}>
             <ShieldCheck color={colors.textSecondary} size={20} />
             <Text style={[styles.settingLabelText, { color: colors.text }]}>{t('settings.privacy')}</Text>
@@ -306,29 +304,24 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.four,
-    maxWidth: 680,
+    maxWidth: 780,
     width: '100%',
     alignSelf: 'center',
   },
   userCard: {
     alignItems: 'center',
     paddingVertical: Spacing.four,
-    borderWidth: 0,
+    borderWidth: 1,
+    borderRadius: 16,
     marginBottom: Spacing.four,
   },
   avatarCircle: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.two,
-    elevation: 2,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   avatarEmoji: {
     fontSize: 28,
@@ -351,6 +344,8 @@ const styles = StyleSheet.create({
   },
   breakdownCard: {
     padding: Spacing.three,
+    borderRadius: 16,
+    borderWidth: 1,
     marginBottom: Spacing.two,
   },
   totalScoreRow: {
@@ -435,6 +430,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1,
+    borderRadius: 14,
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.four,
     marginVertical: Spacing.one,
@@ -454,6 +450,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1,
+    borderRadius: 14,
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.four,
     marginVertical: Spacing.one,
@@ -461,7 +458,7 @@ const styles = StyleSheet.create({
   signOutBtn: {
     marginTop: Spacing.five,
     borderWidth: 1.5,
-    borderColor: '#EF444430',
+    borderColor: '#EF444450',
   },
   bottomSpacer: {
     height: 90,
