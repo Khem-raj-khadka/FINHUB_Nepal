@@ -1,29 +1,16 @@
-import React, { useEffect } from 'react';
-import { Tabs, useRouter } from 'expo-router';
-import { useColorScheme, Platform, StyleSheet, Text, View } from 'react-native';
-import { Home, Wallet, TrendingUp, Target, Sparkles } from 'lucide-react-native';
-import { Colors, Spacing } from '../../constants/theme';
-import { useFinanceStore } from '../../store/useFinanceStore';
-import { useTranslation } from '../../i18n';
+import { Tabs } from "expo-router";
+import {
+    Home,
+    Sparkles,
+    Target,
+    TrendingUp,
+    Wallet,
+} from "lucide-react-native";
+import { Platform } from "react-native";
+import { useAppTheme } from "../../hooks/useAppTheme";
 
 export default function TabsLayout() {
-  const scheme = useColorScheme();
-  const themeMode = useFinanceStore((state) => state.themeMode);
-  const isDark = themeMode === 'system' ? scheme === 'dark' : themeMode === 'dark';
-  const colors = Colors[isDark ? 'dark' : 'light'];
-  const isAuthenticated = useFinanceStore((state) => state.isAuthenticated);
-  const router = useRouter();
-  const { t } = useTranslation();
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.replace('/auth/login');
-    }
-  }, [isAuthenticated]);
-
-  if (!isAuthenticated) {
-    return null;
-  }
+  const { colors } = useAppTheme();
 
   return (
     <Tabs
@@ -34,66 +21,57 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: colors.card,
           borderTopColor: colors.border,
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 26 : 8,
-          paddingTop: 6,
-          paddingHorizontal: 2,
+          height: Platform.OS === "ios" ? 88 : 64,
+          paddingBottom: Platform.OS === "ios" ? 28 : 10,
+          paddingTop: 10,
           borderTopWidth: 1,
           elevation: 8,
-          shadowColor: '#000000',
+          shadowColor: "#000000",
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.05,
           shadowRadius: 10,
         },
-        tabBarItemStyle: {
-          paddingHorizontal: 2,
-          paddingVertical: 2,
-          justifyContent: 'center',
-          alignItems: 'center',
-        },
         tabBarLabelStyle: {
-          fontSize: 10.5,
-          fontWeight: '700',
-          marginTop: 2,
-          marginBottom: 2,
+          fontSize: 11,
+          fontWeight: "700",
         },
-        tabBarIconStyle: {
-          marginTop: 2,
-        },
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="home"
         options={{
-          title: t('tab.home'),
-          tabBarIcon: ({ color }) => <Home color={color} size={20} />,
+          title: "Home",
+          tabBarIcon: ({ color, size }) => <Home color={color} size={22} />,
         }}
       />
       <Tabs.Screen
         name="accounts"
         options={{
-          title: t('tab.accounts'),
-          tabBarIcon: ({ color }) => <Wallet color={color} size={20} />,
+          title: "Accounts",
+          tabBarIcon: ({ color, size }) => <Wallet color={color} size={22} />,
         }}
       />
       <Tabs.Screen
         name="investments"
         options={{
-          title: t('tab.invest'),
-          tabBarIcon: ({ color }) => <TrendingUp color={color} size={20} />,
+          title: "Invest",
+          tabBarIcon: ({ color, size }) => (
+            <TrendingUp color={color} size={22} />
+          ),
         }}
       />
       <Tabs.Screen
         name="goals"
         options={{
-          title: t('tab.goals'),
-          tabBarIcon: ({ color }) => <Target color={color} size={20} />,
+          title: "Goals",
+          tabBarIcon: ({ color, size }) => <Target color={color} size={22} />,
         }}
       />
       <Tabs.Screen
         name="ai-coach"
         options={{
-          title: t('tab.aiCoach'),
-          tabBarIcon: ({ color }) => <Sparkles color={color} size={20} />,
+          title: "AI Coach",
+          tabBarIcon: ({ color, size }) => <Sparkles color={color} size={22} />,
         }}
       />
     </Tabs>

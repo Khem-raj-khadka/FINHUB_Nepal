@@ -1,33 +1,38 @@
-import React, { useState } from 'react';
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableOpacity,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { useFinanceStore } from '../../store/useFinanceStore';
-import { Spacing } from '../../constants/theme';
-import { useAppTheme } from '../../hooks/useAppTheme';
-import Button from '../../components/ui/Button';
-import Card from '../../components/ui/Card';
-import FeedbackModal, { FeedbackType } from '../../components/ui/FeedbackModal';
-import { InvestmentCategory } from '../../types';
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import * as z from "zod";
+import Button from "../../components/ui/Button";
+import Card from "../../components/ui/Card";
+import { Spacing } from "../../constants/theme";
+import { useAppTheme } from "../../hooks/useAppTheme";
+import { useFinanceStore } from "../../store/useFinanceStore";
+import { InvestmentCategory } from "../../types";
 
 // Zod schema validation
 const investmentSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  category: z.enum(['SIP', 'Stock', 'Mutual Fund', 'Fixed Deposit', 'Other'] as const),
-  purchaseValue: z.number().min(1, 'Please enter a valid amount'),
-  currentValue: z.number().min(0, 'Please enter a valid current value'),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  category: z.enum([
+    "SIP",
+    "Stock",
+    "Mutual Fund",
+    "Fixed Deposit",
+    "Other",
+  ] as const),
+  purchaseValue: z.number().min(1, "Please enter a valid amount"),
+  currentValue: z.number().min(0, "Please enter a valid current value"),
   monthlyContribution: z.number().optional(),
   quantity: z.number().optional(),
 });
@@ -36,24 +41,11 @@ type InvestmentFormData = z.infer<typeof investmentSchema>;
 
 export default function AddInvestment() {
   const router = useRouter();
-  const { colors, isDark } = useAppTheme();
+  const { colors } = useAppTheme();
 
   // Zustand
   const { addInvestment } = useFinanceStore();
   const [loading, setLoading] = useState(false);
-
-  // Feedback Modal
-  const [feedbackState, setFeedbackState] = useState<{
-    visible: boolean;
-    type: FeedbackType;
-    title: string;
-    message: string;
-  }>({
-    visible: false,
-    type: 'info',
-    title: '',
-    message: '',
-  });
 
   const {
     control,
@@ -64,8 +56,8 @@ export default function AddInvestment() {
   } = useForm<InvestmentFormData>({
     resolver: zodResolver(investmentSchema),
     defaultValues: {
-      name: '',
-      category: 'SIP',
+      name: "",
+      category: "SIP",
       purchaseValue: 0,
       currentValue: 0,
       monthlyContribution: 0,
@@ -73,7 +65,7 @@ export default function AddInvestment() {
     },
   });
 
-  const selectedCategory = watch('category');
+  const selectedCategory = watch("category");
 
   const onSubmit = async (data: InvestmentFormData) => {
     setLoading(true);
@@ -84,66 +76,62 @@ export default function AddInvestment() {
           data.category as InvestmentCategory,
           data.purchaseValue,
           data.currentValue,
-          data.category === 'SIP' ? data.monthlyContribution : undefined,
-          data.category === 'Stock' ? data.quantity : undefined
+          data.category === "SIP" ? data.monthlyContribution : undefined,
+          data.category === "Stock" ? data.quantity : undefined,
         );
         setLoading(false);
-        setFeedbackState({
-          visible: true,
-          type: 'success',
-          title: 'Investment Tracker Saved',
-          message: `Successfully added ${data.name} to your ${data.category} portfolio.`,
-        });
-      }, 500);
+        router.replace("/(tabs)/investments");
+      }, 1000);
     } catch (err) {
       setLoading(false);
     }
   };
 
-  const handleFeedbackClose = () => {
-    setFeedbackState((s) => ({ ...s, visible: false }));
-    router.replace('/(tabs)/investments');
-  };
-
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      
-      {/* Feedback Modal */}
-      <FeedbackModal
-        visible={feedbackState.visible}
-        type={feedbackState.type}
-        title={feedbackState.title}
-        message={feedbackState.message}
-        onClose={handleFeedbackClose}
-      />
-
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.keyboardView}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          
-          <Card style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.keyboardView}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <Card style={styles.card}>
             {/* Category selection */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Asset Category</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                Asset Category
+              </Text>
               <View style={styles.categoryRow}>
-                {(['SIP', 'Stock', 'Mutual Fund', 'Fixed Deposit'] as const).map((cat) => (
+                {(
+                  ["SIP", "Stock", "Mutual Fund", "Fixed Deposit"] as const
+                ).map((cat) => (
                   <TouchableOpacity
                     key={cat}
-                    onPress={() => setValue('category', cat)}
+                    onPress={() => setValue("category", cat)}
                     style={[
                       styles.catChip,
-                      { borderColor: colors.border, backgroundColor: colors.backgroundElement },
+                      { borderColor: colors.border },
                       selectedCategory === cat && {
                         backgroundColor: colors.text,
                         borderColor: colors.text,
                       },
-                    ]}>
+                    ]}
+                  >
                     <Text
                       style={[
                         styles.catChipText,
-                        { color: selectedCategory === cat ? colors.background : colors.text },
-                      ]}>
+                        {
+                          color:
+                            selectedCategory === cat
+                              ? colors.background
+                              : colors.textSecondary,
+                        },
+                      ]}
+                    >
                       {cat}
                     </Text>
                   </TouchableOpacity>
@@ -154,7 +142,9 @@ export default function AddInvestment() {
             {/* Fund / Company Name */}
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.textSecondary }]}>
-                {selectedCategory === 'Stock' ? 'Stock Ticker / Company Name' : 'Investment Name / Fund Name'}
+                {selectedCategory === "Stock"
+                  ? "Stock Ticker / Company Name"
+                  : "Investment Name / Fund Name"}
               </Text>
               <Controller
                 control={control}
@@ -164,29 +154,40 @@ export default function AddInvestment() {
                     style={[
                       styles.input,
                       {
-                        color: isDark ? '#F8FAFC' : '#0F172A',
-                        borderColor: errors.name ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
-                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                        color: colors.text,
+                        borderColor: errors.name
+                          ? colors.danger
+                          : colors.border,
                       },
                     ]}
-                    placeholder={selectedCategory === 'Stock' ? 'e.g. NABIL or NMB' : 'e.g. Nabil Flexi Cap Fund'}
-                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
+                    placeholder={
+                      selectedCategory === "Stock"
+                        ? "e.g. NABIL or NMB"
+                        : "e.g. Nabil Flexi Cap Fund"
+                    }
+                    placeholderTextColor={colors.textSecondary}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
-                    autoCapitalize={selectedCategory === 'Stock' ? 'characters' : 'words'}
+                    autoCapitalize={
+                      selectedCategory === "Stock" ? "characters" : "words"
+                    }
                   />
                 )}
               />
               {errors.name && (
-                <Text style={[styles.errorText, { color: colors.danger }]}>{errors.name.message}</Text>
+                <Text style={[styles.errorText, { color: colors.danger }]}>
+                  {errors.name.message}
+                </Text>
               )}
             </View>
 
             {/* Quantity of shares (for Stock only) */}
-            {selectedCategory === 'Stock' && (
+            {selectedCategory === "Stock" && (
               <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>Number of Shares</Text>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  Number of Shares
+                </Text>
                 <Controller
                   control={control}
                   name="quantity"
@@ -195,17 +196,18 @@ export default function AddInvestment() {
                       style={[
                         styles.input,
                         {
-                          color: isDark ? '#F8FAFC' : '#0F172A',
-                          borderColor: errors.quantity ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
-                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                          color: colors.text,
+                          borderColor: errors.quantity
+                            ? colors.danger
+                            : colors.border,
                         },
                       ]}
                       placeholder="e.g. 50"
-                      placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
+                      placeholderTextColor={colors.textSecondary}
                       keyboardType="numeric"
                       onBlur={onBlur}
                       onChangeText={(text) => onChange(Number(text) || 0)}
-                      value={value ? String(value) : ''}
+                      value={value ? String(value) : ""}
                     />
                   )}
                 />
@@ -220,7 +222,9 @@ export default function AddInvestment() {
             {/* Invested Value (Principal) */}
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.textSecondary }]}>
-                {selectedCategory === 'Stock' ? 'Total Purchase Value (Rs.)' : 'Total Invested Principal (Rs.)'}
+                {selectedCategory === "Stock"
+                  ? "Total Purchase Value (Rs.)"
+                  : "Total Invested Principal (Rs.)"}
               </Text>
               <Controller
                 control={control}
@@ -230,17 +234,18 @@ export default function AddInvestment() {
                     style={[
                       styles.input,
                       {
-                        color: isDark ? '#F8FAFC' : '#0F172A',
-                        borderColor: errors.purchaseValue ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
-                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                        color: colors.text,
+                        borderColor: errors.purchaseValue
+                          ? colors.danger
+                          : colors.border,
                       },
                     ]}
                     placeholder="e.g. 25000"
-                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
+                    placeholderTextColor={colors.textSecondary}
                     keyboardType="numeric"
                     onBlur={onBlur}
                     onChangeText={(text) => onChange(Number(text) || 0)}
-                    value={value ? String(value) : ''}
+                    value={value ? String(value) : ""}
                   />
                 )}
               />
@@ -253,7 +258,9 @@ export default function AddInvestment() {
 
             {/* Current Valuation */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Current Market Valuation (Rs.)</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                Current Market Valuation (Rs.)
+              </Text>
               <Controller
                 control={control}
                 name="currentValue"
@@ -262,17 +269,18 @@ export default function AddInvestment() {
                     style={[
                       styles.input,
                       {
-                        color: isDark ? '#F8FAFC' : '#0F172A',
-                        borderColor: errors.currentValue ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
-                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                        color: colors.text,
+                        borderColor: errors.currentValue
+                          ? colors.danger
+                          : colors.border,
                       },
                     ]}
                     placeholder="e.g. 28500"
-                    placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
+                    placeholderTextColor={colors.textSecondary}
                     keyboardType="numeric"
                     onBlur={onBlur}
                     onChangeText={(text) => onChange(Number(text) || 0)}
-                    value={value ? String(value) : ''}
+                    value={value ? String(value) : ""}
                   />
                 )}
               />
@@ -284,9 +292,11 @@ export default function AddInvestment() {
             </View>
 
             {/* Monthly contribution (for SIP only) */}
-            {selectedCategory === 'SIP' && (
+            {selectedCategory === "SIP" && (
               <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>Monthly Contribution (Rs.)</Text>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  Monthly Contribution (Rs.)
+                </Text>
                 <Controller
                   control={control}
                   name="monthlyContribution"
@@ -295,17 +305,18 @@ export default function AddInvestment() {
                       style={[
                         styles.input,
                         {
-                          color: isDark ? '#F8FAFC' : '#0F172A',
-                          borderColor: errors.monthlyContribution ? colors.danger : (isDark ? '#334155' : '#CBD5E1'),
-                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                          color: colors.text,
+                          borderColor: errors.monthlyContribution
+                            ? colors.danger
+                            : colors.border,
                         },
                       ]}
                       placeholder="e.g. 5000"
-                      placeholderTextColor={isDark ? '#94A3B8' : '#64748B'}
+                      placeholderTextColor={colors.textSecondary}
                       keyboardType="numeric"
                       onBlur={onBlur}
                       onChangeText={(text) => onChange(Number(text) || 0)}
-                      value={value ? String(value) : ''}
+                      value={value ? String(value) : ""}
                     />
                   )}
                 />
@@ -342,26 +353,21 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.four,
-    maxWidth: 680,
-    width: '100%',
-    alignSelf: 'center',
   },
   card: {
     padding: Spacing.four,
-    borderWidth: 1,
-    borderRadius: 16,
   },
   inputGroup: {
     marginBottom: Spacing.four,
   },
   label: {
-    fontSize: 13.5,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: "700",
     marginBottom: Spacing.two,
   },
   categoryRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: Spacing.two,
   },
   catChip: {
@@ -372,18 +378,18 @@ const styles = StyleSheet.create({
   },
   catChipText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   input: {
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderRadius: 10,
     paddingVertical: Spacing.two * 1.5,
     paddingHorizontal: Spacing.three,
-    fontSize: 14.5,
+    fontSize: 15,
   },
   errorText: {
-    fontSize: 11.5,
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: "500",
     marginTop: Spacing.one,
   },
   submitBtn: {
