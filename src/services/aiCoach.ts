@@ -115,6 +115,9 @@ ${JSON.stringify(financialContext, null, 2)}`;
         if (candidateText && candidateText.trim().length > 0) {
           return sanitizeMarkdownText(candidateText.trim());
         }
+      } else {
+        const errorData = await response.text();
+        console.error('Gemini API HTTP Error:', response.status, errorData);
       }
     } catch (apiError) {
       console.warn('Gemini API call failed, falling back to local engine:', apiError);
